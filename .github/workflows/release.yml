@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  push:
+    tags-ignore:
+      - "*-rc*"
+      - "*-beta*"
+      - "*-alpha*"
+      - "*-dev*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # -------------------------
+      # 1. Build frontend
+      # -------------------------
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # -------------------------
+      # 2. Package files
+      # -------------------------
+      - name: Package release
+        run: |
+          mkdir svtav1UI
+          cp -r api svtav1UI/api
+          tar -czf release.tar.gz svtav1UI
+
+      # -------------------------
+      # 3. Create GitHub Release
+      # -------------------------
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          files: release.tar.gz
+          generate_release_notes: true
+          make_latest: ${{ !contains(github.ref_name, 'beta') && !contains(github.ref_name, 'rc') }}
