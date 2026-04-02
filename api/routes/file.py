@@ -1,6 +1,5 @@
 import asyncio
 import json
-import traceback
 
 from fastapi import APIRouter, HTTPException, Query
 from pathlib import Path

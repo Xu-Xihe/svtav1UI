@@ -351,7 +351,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                                             <AddCircleRoundedIcon />
                                         </IconButton>
                                     </ListItemIcon>
-                                    <ListItemText primary="Add a video file" />
+                                    <ListItemText primary="Add a video file or directory" />
                                 </ListItemButton>
                             </ListItem>
                         )}

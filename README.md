@@ -1,87 +1,70 @@
-# Welcome to React Router!
-
-A modern, production-ready template for building full-stack React applications using React Router.
-
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
+<div align="center">
+  <img src="./public/icon.png" alt="structure" width="288" />
+  <br />
+  <br />
+  <img alt="Node Current" src="https://img.shields.io/node/v/%40rolldown%2Fplugin-babel">
+  <img alt="Python Version" src="https://img.shields.io/badge/python-3.10%2B-blue">
+  <img alt="GitHub License" src="https://img.shields.io/github/license/Xu-Xihe/svtav1UI">
+  <img alt="GitHub Release" src="https://img.shields.io/github/v/release/Xu-Xihe/svtav1UI">
+  <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/Xu-Xihe/svtav1UI/release.yml?label=Release">
+	<img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/Xu-Xihe/svtav1UI/docker.yml?label=Docker">
+  <br />
+  <img alt="GitHub forks" src="https://img.shields.io/github/forks/Xu-Xihe/svtav1UI">
+	<img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/Xu-Xihe/svtav1UI">
+	<img alt="GitHub Issues or Pull Requests" src="https://img.shields.io/github/issues/Xu-Xihe/svtav1UI">
+ </div>
 
 ## Features
 
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
+- With WebUI, convenient for checking progress and operation.
+- Run `ffmpeg` locally, without performance loss.
+- Task queue, with automatic hang-up interrupt.
+- Bulk import & Global settings.
 
-## Getting Started
+## Installations
 
-### Installation
+### 1. Install FFmpeg
 
-Install the dependencies:
+Follow the instruction from [ffmpeg.org](https://ffmpeg.org).
 
-```bash
-npm install
-```
+### 2. Install Api
 
-### Development
+- Download the [latest release](https://github.com/Xu-Xihe/svtav1UI/releases/latest/download/release.tar.gz).
 
-Start the development server with HMR:
+- Unzip the file:
 
 ```bash
-npm run dev
+tar -xzf release.tar.gz
 ```
 
-Your application will be available at `http://localhost:5173`.
+- Install pip packages:
 
-## Building for Production
+```bas
+pip install -r requirements.txt
+```
 
-Create a production build:
+- Run Api:
 
 ```bash
-npm run build
+uvicorn main:app --host 0.0.0.0 --port 38888
 ```
 
-## Deployment
+### 3. Install Docker
 
-### Docker Deployment
-
-To build and run using Docker:
+Docker Hub
 
 ```bash
-docker build -t my-app .
-
-# Run the container
-docker run -p 3000:3000 my-app
+docker run -d -p 8888:80 starstreammm/stvav1ui:latest
 ```
 
-The containerized application can be deployed to any platform that supports Docker, including:
+Github
 
-- AWS ECS
-- Google Cloud Run
-- Azure Container Apps
-- Digital Ocean App Platform
-- Fly.io
-- Railway
-
-### DIY Deployment
-
-If you're familiar with deploying Node applications, the built-in app server is production-ready.
-
-Make sure to deploy the output of `npm run build`
-
-```
-├── package.json
-├── package-lock.json (or pnpm-lock.yaml, or bun.lockb)
-├── build/
-│   ├── client/    # Static assets
-│   └── server/    # Server-side code
+```bash
+docker run -d -p 8888:80 ghcr.io/xu-xihe/svtav1ui:latest
 ```
 
-## Styling
+## Links
 
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
+FFmpeg: [https://ffmpeg.org](https://ffmpeg.org)
 
----
-
-Built with ❤️ using React Router.
+SVT-AV1 Encoder: [https://gitlab.com/AOMediaCodec/SVT-AV1/](https://gitlab.com/AOMediaCodec/SVT-AV1/)

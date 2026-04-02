@@ -1,5 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+from fastapi import APIRouter, Query
 from pathlib import Path
 from pypinyin import lazy_pinyin
 

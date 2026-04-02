@@ -90,42 +90,45 @@ export default function ErrorPopout() {
         setTimeout(() => delMsg(id), 300);
     };
 
-    return (
-        <Box
-            sx={{
-                position: "fixed",
-                bottom: 16,
-                left: 16,
-                display: open ? "flex" : "none",
-                flexDirection: "column",
-                gap: 1,
-                zIndex: 8889,
-            }}
-        >
-            {msg.map((m) => (
-                <Collapse key={m.id} in={visible[m.id]} timeout={300}>
-                    <Box sx={{ transition: "margin 0.3s" }}>
-                        <Alert
-                            variant="filled"
-                            severity={m.level}
-                            sx={{
-                                width: 368,
-                                wordBreak: "break-word",
-                            }}
-                            action={
-                                <IconButton
-                                    onClick={() => handleClose(m.id)}
-                                    sx={{ borderRadius: 1, p: 0.5 }}
-                                >
-                                    <CloseRoundedIcon sx={{ color: "white" }} />
-                                </IconButton>
-                            }
-                        >
-                            {m.text}
-                        </Alert>
-                    </Box>
-                </Collapse>
-            ))}
-        </Box>
-    );
+    if (!open) return null;
+
+    else
+        return (
+            <Box
+                sx={{
+                    position: "fixed",
+                    bottom: 16,
+                    left: 16,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 1,
+                    zIndex: 8889,
+                }}
+            >
+                {msg.map((m) => (
+                    <Collapse key={m.id} in={visible[m.id]} timeout={300}>
+                        <Box sx={{ transition: "margin 0.3s" }}>
+                            <Alert
+                                variant="filled"
+                                severity={m.level}
+                                sx={{
+                                    width: 368,
+                                    wordBreak: "break-word",
+                                }}
+                                action={
+                                    <IconButton
+                                        onClick={() => handleClose(m.id)}
+                                        sx={{ borderRadius: 1, p: 0.5 }}
+                                    >
+                                        <CloseRoundedIcon sx={{ color: "white" }} />
+                                    </IconButton>
+                                }
+                            >
+                                {m.text}
+                            </Alert>
+                        </Box>
+                    </Collapse>
+                ))}
+            </Box>
+        );
 }

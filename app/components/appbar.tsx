@@ -11,7 +11,6 @@ import {
 import ContrastRoundedIcon from '@mui/icons-material/ContrastRounded';
 import CableRoundedIcon from '@mui/icons-material/CableRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
-import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import { useColorScheme } from '@mui/material/styles';
 
 import { useEffect, useState } from "react";
@@ -31,7 +30,7 @@ export default function AppBarComponent() {
     const { setOpen } = useErrorMsg();
 
     const theme = useTheme();
-    const { mode, setMode } = useColorScheme();
+    const { setMode } = useColorScheme();
     const preferIsDark = useMediaQuery("(prefers-color-scheme: dark)");
     const [themeMode, setThemeMode] = useLocalStorage<'light' | 'dark' | 'system'>('theme-mode', 'system', 'local');
 
@@ -111,13 +110,10 @@ export default function AppBarComponent() {
                         display: 'flex',
                         gap: 1,
                     }}>
-                        <IconButton>
+                        <IconButton disableRipple>
                             <Badge variant="dot" color={apiConnect ? "success" : "error"}>
                                 <CableRoundedIcon />
                             </Badge>
-                        </IconButton>
-                        <IconButton>
-                            <SettingsRoundedIcon />
                         </IconButton>
                         <IconButton onClick={() => changeThemeMode()}>
                             <ContrastRoundedIcon />

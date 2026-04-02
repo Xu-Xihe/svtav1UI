@@ -84,6 +84,7 @@ class Database:
     @classmethod
     async def close(cls):
         if cls._database is not None:
+            cls._database.commit()
             cls._database.close()
             cls._database = None
             cls._cursor = None

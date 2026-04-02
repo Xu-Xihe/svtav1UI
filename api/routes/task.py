@@ -56,8 +56,10 @@ class TaskOprations:
                     except Exception as e:
                         cls._running = None
                         print(e)
+
         except asyncio.CancelledError:
             if cls._running and task:
+                task.output.unlink(missing_ok=True)
                 await db.insert_task(task)
 
     @staticmethod
@@ -95,6 +97,9 @@ class TaskOprations:
 
     @classmethod
     async def transcode(cls, task: TaskInfo) -> str:
+        if (not task.settings.overwrite) and task.output.exists():
+            return "Output file already exists and overwrite is disabled."
+
         video_filters = f"setsar=1{',' + task.args.sar_fix if task.args.sar_fix else ''}{',transpose=' + str(task.settings.rotate) if task.settings.rotate is not None else ''}"
 
         filter_complex = []
@@ -244,7 +249,6 @@ class TaskOprations:
                     json.dumps(task.error, ensure_ascii=False),
                 )
         else:
-            print("kkk")
             await db.execute(
                 "INSERT INTO completed (input, output, total_consumed, finished_time) VALUES (?, ?, ?, ?);",
                 json.dumps(
@@ -331,6 +335,7 @@ async def get_failed():
                 error=json.loads(row["error"]),
             )
         )
+    tasks.reverse()
     return tasks
 
 
