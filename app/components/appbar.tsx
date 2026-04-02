@@ -45,7 +45,8 @@ export default function AppBarComponent() {
                 setApiConnect(true);
                 setOpen(true);
 
-            } catch {
+            }
+            catch {
                 setApiConnect(false);
                 setOpen(false);
             }

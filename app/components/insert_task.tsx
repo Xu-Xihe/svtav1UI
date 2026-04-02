@@ -187,6 +187,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                 })
         }
         if (!is_error) {
+            pushMsg(`Insert ${tasks.length} task(s) successfully.`, "success");
             onClose();
             navigate("/running");
         }
@@ -195,9 +196,6 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
 
     // Effect hooks
     useEffect(() => {
-        // Initialize states when dialog opens
-        fetchSettings();
-
         // If org_task is provided, initialize with its data
         if (org_task) {
             // Initialize with org_task data
@@ -219,6 +217,10 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
             }
             setSettingsInfo(org_task.settings);
             setOutputDir(org_task.output.split("/").slice(0, -1).join("/") || "/");
+        }
+        else {
+            // Initialize states when dialog opens
+            fetchSettings();
         }
     }, [, open]);
 

@@ -3,7 +3,9 @@ import {
     Typography,
     Divider,
     LinearProgress,
+    Button,
 } from '@mui/material';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 
 import { useQuery } from '@tanstack/react-query';
 
@@ -37,7 +39,7 @@ interface ApiRunning extends TaskInfo {
 
 export default function Running() {
     const apiUrl = getLocalStorage("apiUrl", "local");
-    const { pushError } = useErrorMsg();
+    const { pushMsg, pushError } = useErrorMsg();
 
     const [runningInfo, setRunningInfo] = useState<ApiRunning | null>(null);
 
@@ -84,9 +86,35 @@ export default function Running() {
                 width: "100%",
                 gap: 1,
             }}>
-                <Typography variant="h4" gutterBottom sx={{ mt: 3, ml: 3 }}>
-                    Running Task
-                </Typography>
+                <Box sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    width: "100%",
+                    gap: 1,
+                    px: 3,
+                    pt: 3,
+                    pb: 1,
+                }}>
+                    <Typography variant="h4">
+                        Running Task
+                    </Typography>
+                    <Button
+                        variant='outlined'
+                        color='error'
+                        startIcon={<CloseRoundedIcon />}
+                        onClick={() => {
+                            api.get(`${apiUrl}/task/running/cancel`)
+                                .then(() => {
+                                    pushMsg("Task cancelled successfully.", "info");
+                                })
+                                .catch((error) => {
+                                    pushError(error, "Cancel Task");
+                                })
+                        }} >
+                        Cancel
+                    </Button>
+                </Box>
                 <Divider flexItem variant='fullWidth' />
                 <Box sx={{
                     display: "flex",

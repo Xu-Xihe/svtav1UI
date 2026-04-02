@@ -32,6 +32,7 @@ class TaskOprations:
         r"speed=\s*(?P<speed>[\d\.]+)x\s*"
         r"elapsed=\s*(?P<elapsed>\d+:\d{2}:\d{2}\.?\d*)"
     )
+    _stop_transcoding = False
 
     @classmethod
     async def init(cls):
@@ -41,13 +42,15 @@ class TaskOprations:
                 try:
                     task = await cls.pre_check()
                 except Exception:
-                    await asyncio.sleep(8)
+                    await asyncio.sleep(3)
                 else:
                     try:
                         cls._running = ApiRunning(
                             **task.model_dump(exclude={"has_retry", "error"})
                         )
                         error = await cls.transcode(task)
+                        if error == "Transcoding cancelled by user.":
+                            raise Exception(error)
                         await cls.call_back(task, error)
                         cls._running = None
                     except Exception as e:
@@ -92,14 +95,18 @@ class TaskOprations:
 
     @classmethod
     async def transcode(cls, task: TaskInfo) -> str:
+        video_filters = f"setsar=1{',' + task.args.sar_fix if task.args.sar_fix else ''}{',transpose=' + str(task.settings.rotate) if task.settings.rotate is not None else ''}"
+
         filter_complex = []
         if len(task.input) > 1:
 
             filter_complex += ["-filter_complex"]
             filter_complex += [
-                f"{''.join(f"[{i}:v:0][{i}:a:0]" for i in range(len(task.input)))}concat=n={len(task.input)}:v=1:a=1[outv][outa]"
+                f"{''.join(f"[{i}:v:0][{i}:a:0]" for i in range(len(task.input)))}"
+                f"concat=n={len(task.input)}:v=1:a=1[outv][outa];"
+                f"[outv]{video_filters}[v]"
             ]
-            filter_complex += ["-map", "[outv]", "-map", "[outa]"]
+            filter_complex += ["-map", "[v]", "-map", "[outa]"]
 
         cmd = [
             "ffmpeg",
@@ -118,8 +125,14 @@ class TaskOprations:
             f"rc=1:overshoot-pct={task.settings.overshoot_pct}:undershoot-pct={task.settings.undershoot_pct}:maxsection-pct={task.settings.maxsection_pct}:keyint={task.settings.keyint}:lookahead={task.settings.lookahead}:scd={int(task.settings.scd)}",
             "-preset",
             str(task.settings.preset),
-            "-vf",
-            f"setsar=1{',' + task.args.sar_fix if task.args.sar_fix else ''}{',transpose=' + str(task.settings.rotate) if task.settings.rotate is not None else ''}",
+            *(
+                [
+                    "-vf",
+                    video_filters,
+                ]
+                if not filter_complex
+                else []
+            ),
             "-movflags",
             "+faststart",
             "-c:a",
@@ -141,8 +154,15 @@ class TaskOprations:
         assert cls._running is not None
         total_duration = sum(f.duration for f in cls._running.input)
         while True:
+            # Check if the task is cancelled
+            if cls._stop_transcoding:
+                cls._stop_transcoding = False
+                proc.terminate()
+                await proc.wait()
+                task.output.unlink(missing_ok=True)
+                return "Transcoding cancelled by user."
+
             raw_line = await proc.stdout.readline()
-            print(raw_line.decode().strip())
             if proc.returncode is not None:
                 break
             line = raw_line.decode().strip().split("=")
@@ -264,6 +284,11 @@ async def get_progress():
     return await TaskOprations.progress()
 
 
+@task_router.get("/running/cancel", response_model=None)
+async def stop_transcoding():
+    TaskOprations._stop_transcoding = True
+
+
 @task_router.post("/submit", response_model=None)
 async def submit_task(
     task: TaskInfo,
@@ -329,7 +354,7 @@ async def get_completed():
                 finished_time=datetime.fromisoformat(row["finished_time"]),
             )
         )
-    return tasks
+    return sorted(tasks, key=lambda t: t.finished_time, reverse=True)
 
 
 @task_router.post("/completed/clear", response_model=None)

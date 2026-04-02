@@ -5,9 +5,9 @@ import { useEffect, useState } from "react";
 import { HTTPError } from "ky";
 
 interface ErrorMsgState {
-    msg: { id: string; text: string }[];
+    msg: { id: string; text: string; level: "error" | "warning" | "info" | "success" }[];
     open: boolean;
-    pushMsg: (text: string) => void;
+    pushMsg: (text: string, level?: "error" | "warning" | "info" | "success") => void;
     pushError: (error: unknown, prefix?: string) => Promise<void>;
     delMsg: (id: string) => void;
     setOpen: (open: boolean) => void;
@@ -17,10 +17,10 @@ export const useErrorMsg = create<ErrorMsgState>((set, get) => ({
     msg: [],
     open: true,
 
-    pushMsg: (text) => {
+    pushMsg: (text, level = "error") => {
         const id = Date.now() + Math.random().toString(16).slice(2);
         set((state) => ({
-            msg: [...state.msg, { id, text }],
+            msg: [...state.msg, { id, text, level }],
         }));
     },
 
@@ -52,7 +52,7 @@ export const useErrorMsg = create<ErrorMsgState>((set, get) => ({
         }
 
         const finalText = prefix ? `${prefix}: ${text}` : text;
-        get().pushMsg(finalText);
+        get().pushMsg(finalText, "error");
     },
 
     delMsg: (id) => {
@@ -61,7 +61,12 @@ export const useErrorMsg = create<ErrorMsgState>((set, get) => ({
         }));
     },
 
-    setOpen: (open) => set({ open }),
+    setOpen: (open) => {
+        if (!open) {
+            set({ msg: [] });
+        }
+        set({ open });
+    },
 }));
 
 export default function ErrorPopout() {
@@ -102,7 +107,7 @@ export default function ErrorPopout() {
                     <Box sx={{ transition: "margin 0.3s" }}>
                         <Alert
                             variant="filled"
-                            severity="error"
+                            severity={m.level}
                             sx={{
                                 width: 368,
                                 wordBreak: "break-word",
