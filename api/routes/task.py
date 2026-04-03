@@ -121,7 +121,7 @@ class TaskOprations:
             filter_complex += [
                 f"{''.join(f"[{i}:v:0][{i}:a:0]" for i in range(len(task.input)))}"
                 f"concat=n={len(task.input)}:v=1:a=1[outv][outa];"
-                f"[outv]{video_filters}[v]"
+                f"[outv]{','.join(video_filters)}[v]"
             ]
             filter_complex += ["-map", "[v]", "-map", "[outa]"]
 
@@ -147,7 +147,7 @@ class TaskOprations:
             *(
                 [
                     "-vf",
-                    video_filters,
+                    ",".join(video_filters),
                 ]
                 if not filter_complex
                 else []
