@@ -83,11 +83,11 @@ export default function Waiting() {
                 <Table sx={{ width: "100%" }}>
                     <TableHead>
                         <TableRow>
-                            <TableCell sx={{ width: 8 }}>UID</TableCell>
+                            <TableCell sx={{ minwidth: 18 }}>UID</TableCell>
                             <TableCell>Input</TableCell>
                             <TableCell>Output</TableCell>
-                            <TableCell sx={{ width: 8 }}>Retry</TableCell>
-                            <TableCell sx={{ width: 8 }}></TableCell>
+                            <TableCell sx={{ minwidth: 8 }}>Retry</TableCell>
+                            <TableCell sx={{ minwidth: 8 }}></TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>

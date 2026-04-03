@@ -59,6 +59,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
     const navigate = useNavigate();
 
     const [openNewFolder, setOpenNewFolder] = useState("");
+    const [inserting, setInserting] = useState(false);
 
     // Path state
     const [pathList, setPathList] = useState<PathInfo>({
@@ -149,17 +150,18 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
         }
     }
 
-    const insertTasks = () => {
+    const insertTasks = async () => {
         if (taskInfo.length === 0) {
             pushMsg("No tasks to insert");
             return;
         }
+        setInserting(true);
         let tasks = [] as TaskInfo[];
         if (multiInOne) {
             const newTask: TaskInfo = {
                 uid: org_task?.uid,
                 input: taskInfo.map(t => t.input),
-                output: outputDir + "/" + taskInfo[0].input.path.split("/").pop()?.split(".").slice(0, -1).join(".") + ".mp4",
+                output: outputDir + "/" + taskInfo[0].input.path.split("/").pop()?.split(".").slice(0, -1).join(".").replaceAll("//", "/") + ".mp4",
                 args: multiargs,
                 settings: settingsInfo,
             } as TaskInfo;
@@ -170,21 +172,22 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                 const newTask: TaskInfo = {
                     uid: i === 0 ? org_task?.uid : undefined,
                     input: [taskInfo[i].input],
-                    output: outputDir + "/" + taskInfo[i].input.path.split("/").pop()?.split(".").slice(0, -1).join(".") + ".mp4",
+                    output: outputDir + "/" + taskInfo[i].input.path.split("/").pop()?.split(".").slice(0, -1).join(".").replaceAll("//", "/") + ".mp4",
                     args: taskInfo[i].trans,
                     settings: settingsInfo,
                 } as TaskInfo;
-                console.log(newTask.output);
                 tasks.push(newTask);
             }
         }
         let is_error = false;
         for (const task of tasks) {
-            api.post(`${apiUrl}/task/submit`, { json: task })
-                .catch(error => {
-                    is_error = true;
-                    pushError(error, `Insert task (${task.input[0].path.split("/").slice(-1)[0]})`);
-                })
+            try {
+                await api.post(`${apiUrl}/task/submit`, { json: task })
+            }
+            catch (error) {
+                is_error = true;
+                pushError(error, `Insert task (${task.input[0].path.split("/").slice(-1)[0]})`);
+            }
         }
         if (!is_error) {
             pushMsg(`Insert ${tasks.length} task(s) successfully.`, "success");
@@ -263,7 +266,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                 gap: 1,
                 p: 3,
             }}>
-                <Dialog open={openNewFolder !== ""} onClose={() => setOpenNewFolder("")}>
+                <Dialog open={openNewFolder !== ""} onClose={() => setOpenNewFolder("")} fullWidth>
                     <DialogTitle>
                         <Typography variant="h6" fontWeight="bold">
                             Create New Folder
@@ -273,8 +276,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                         <TextField
                             label="Folder Name"
                             variant="outlined"
-                            fullWidth
-                            sx={{ mt: 1 }}
+                            sx={{ mt: 1, width: "100%" }}
                             onChange={(e) => setOpenNewFolder(e.target.value)}
                         />
                     </DialogContent>
@@ -318,7 +320,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                         {taskInfo.map((task, index) => (
                             <React.Fragment key={index}>
                                 <ListItem disablePadding>
-                                    <ListItemButton onClick={() => setExtendInputInfo(extendInputInfo === index ? -1 : index)}>
+                                    <ListItemButton onClick={() => setExtendInputInfo(extendInputInfo === index ? -2 : index)}>
                                         <ListItemIcon>
                                             <IconButton
                                                 sx={{ display: index === 0 && org_task !== undefined ? "none" : "flex" }}
@@ -339,7 +341,9 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                                     </ListItemButton>
                                 </ListItem>
                                 <Collapse in={extendInputInfo === index} timeout="auto" unmountOnExit>
+                                    <Divider sx={{ mb: 1 }} />
                                     <FileInfoComponent fileInfo={[task.input]} />
+                                    <Divider sx={{ mt: 1 }} />
                                 </Collapse>
                             </React.Fragment>
                         ))}
@@ -444,7 +448,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                                 File {index + 1}
                             </Typography>
                             {[
-                                ["Output Path", `${outputDir === "/" ? "/" : outputDir + "/"}${task.input.path.split("/").slice(-1)[0].split(".").slice(0, -1).join(".")}.mp4`],
+                                ["Output Path", `${(outputDir === "/" ? "/" : outputDir + "/").replaceAll("//", "/")}${task.input.path.split("/").slice(-1)[0].split(".").slice(0, -1).join(".")}.mp4`],
                                 ["Video Bitrate", `${(task.trans.video_br / 1000 / 1000).toFixed(2)} Mbps`],
                                 ["Audio Bitrate", `${(task.trans.audio_br / 1000).toFixed(2)} kbps`],
                             ].map(([key, value]) => (
@@ -703,7 +707,12 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                 <Button onClick={onCancelled} variant="outlined">
                     Cancel
                 </Button>
-                <Button variant="contained" onClick={() => insertTasks()}>
+                <Button
+                    variant="contained"
+                    onClick={() => insertTasks()}
+                    loading={inserting}
+                    loadingPosition="end"
+                >
                     Insert
                 </Button>
             </DialogActions>

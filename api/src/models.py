@@ -69,7 +69,7 @@ class FileInfo(BaseModel):
 class Settings(BaseModel):
     overwrite: bool = False
     delete_source: bool = True
-    rotate: Optional[int] = Field(default=None, ge=0, le=3)
+    rotate: Optional[int] = Field(default=None, ge=0, le=6)
     retry: int = Field(default=3, ge=0, le=8)
 
     preset: int = Field(default=6, ge=0, le=12)

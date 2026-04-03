@@ -101,7 +101,18 @@ class TaskOprations:
         if (not task.settings.overwrite) and task.output.exists():
             return "Output file already exists and overwrite is disabled."
 
-        video_filters = f"setsar=1{',' + task.args.sar_fix if task.args.sar_fix else ''}{',transpose=' + str(task.settings.rotate) if task.settings.rotate is not None else ''}"
+        video_filters = ["setsar=1"]
+        if task.args.sar_fix:
+            video_filters.append(task.args.sar_fix)
+        if task.settings.rotate is not None:
+            if task.settings.rotate in [0, 3]:
+                video_filters.append(f"transpose={task.settings.rotate}")
+            elif task.settings.rotate == 4:
+                video_filters.append("hflip")
+            elif task.settings.rotate == 5:
+                video_filters.append("vflip")
+            elif task.settings.rotate == 6:
+                video_filters.append("hflip,vflip")
 
         filter_complex = []
         if len(task.input) > 1:
@@ -191,7 +202,7 @@ class TaskOprations:
                 cls._running.qp = float(value)
             elif key == "bitrate":
                 cls._running.bitrate = value
-            elif key == "size":
+            elif key == "total_size":
                 cls._running.size = (
                     f"{int(value)/1024:.2f} KB"
                     if int(value) < 1024**2
@@ -236,11 +247,10 @@ class TaskOprations:
         assert cls._running is not None
         if error:
             # Add error info
-            task.uid = None
             task.has_retry += 1
             task.error.append(error)
 
-            if task.has_retry < task.settings.retry:
+            if task.has_retry <= task.settings.retry:
                 await db.insert_task(task)
             else:
                 await db.execute(

@@ -20,21 +20,7 @@ jobs:
         uses: actions/checkout@v6
 
       # -------------------------
-      # 1. Build frontend
-      # -------------------------
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-
-      - name: Install deps
-        run: npm ci
-
-      - name: Build
-        run: npm run build
-
-      # -------------------------
-      # 2. Package files
+      # 1. Package files
       # -------------------------
       - name: Package release
         run: |
@@ -43,7 +29,7 @@ jobs:
           tar -czf release.tar.gz svtav1UI
 
       # -------------------------
-      # 3. Create GitHub Release
+      # 2. Create GitHub Release
       # -------------------------
       - name: Create Release
         uses: softprops/action-gh-release@v2
