@@ -46,7 +46,8 @@ class TaskOprations:
                 else:
                     try:
                         cls._running = ApiRunning(
-                            **task.model_dump(exclude={"has_retry", "error"})
+                            **task.model_dump(exclude={"has_retry", "error"}),
+                            start_time=datetime.now(timezone.utc),
                         )
                         error = await cls.transcode(task)
                         if error == "Transcoding cancelled by user.":
@@ -115,6 +116,8 @@ class TaskOprations:
 
         cmd = [
             "ffmpeg",
+            "-v",
+            "quiet",
             "-progress",
             "pipe:1",
             "-y" if task.settings.overwrite else "-n",
@@ -159,6 +162,9 @@ class TaskOprations:
         assert cls._running is not None
         total_duration = sum(f.duration for f in cls._running.input)
         while True:
+            if proc.returncode is not None:
+                break
+
             # Check if the task is cancelled
             if cls._stop_transcoding:
                 cls._stop_transcoding = False
@@ -168,8 +174,6 @@ class TaskOprations:
                 return "Transcoding cancelled by user."
 
             raw_line = await proc.stdout.readline()
-            if proc.returncode is not None:
-                break
             line = raw_line.decode().strip().split("=")
             if len(line) != 2:
                 continue
@@ -177,6 +181,8 @@ class TaskOprations:
             if value == "N/A":
                 if cls._running.progress > 10:
                     cls._running.progress = 100.0
+                    cls._running.eta = timedelta(seconds=0)
+                    break
             elif key == "frame":
                 cls._running.frame = int(value)
             elif key == "fps":
@@ -322,6 +328,13 @@ async def get_waiting():
     for row in rows:
         tasks.append(await db.fetch_ApiWaiting(row))
     return tasks
+
+
+@task_router.get("/waiting/delete", response_model=None)
+async def delete_waiting(
+    uid: int = Query(..., description="The uid of the waiting task to delete")
+):
+    await db.execute("DELETE FROM waiting WHERE uid=?;", uid)
 
 
 @task_router.get("/failed", response_model=list[ApiFailed])

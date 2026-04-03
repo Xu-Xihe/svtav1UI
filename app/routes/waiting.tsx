@@ -10,7 +10,7 @@ import {
     Collapse,
     Button,
 } from '@mui/material';
-import EditRoundedIcon from '@mui/icons-material/EditRounded';
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 
@@ -30,7 +30,7 @@ interface ApiWaiting extends TaskInfo {
 
 export default function Waiting() {
     const apiUrl = getLocalStorage("apiUrl", "local");
-    const { pushError } = useErrorMsg();
+    const { pushMsg, pushError } = useErrorMsg();
 
     const [waitingInfo, setWaitingInfo] = useState<ApiWaiting[]>([]);
     const [taskSelected, setTaskSelected] = useState<number>(-1);
@@ -39,6 +39,15 @@ export default function Waiting() {
         api.get(`${apiUrl}/task/waiting`).json<ApiWaiting[]>()
             .then(data => setWaitingInfo(data))
             .catch(error => pushError(error, "Waiting tasks"));
+    }
+
+    const deleteTask = (uid: number | undefined) => {
+        if (uid === undefined) pushMsg("Task uid is undefined", "warning");
+        api.get(`${apiUrl}/task/waiting/delete`, { searchParams: { uid } })
+            .then(() => {
+                fetchls();
+            })
+            .catch(error => pushError(error, "Delete waiting task"));
     }
 
     useEffect(() => {
@@ -74,11 +83,11 @@ export default function Waiting() {
                 <Table sx={{ width: "100%" }}>
                     <TableHead>
                         <TableRow>
-                            <TableCell>UID</TableCell>
+                            <TableCell sx={{ width: 8 }}>UID</TableCell>
                             <TableCell>Input</TableCell>
                             <TableCell>Output</TableCell>
-                            <TableCell>Retry</TableCell>
-                            <TableCell></TableCell>
+                            <TableCell sx={{ width: 8 }}>Retry</TableCell>
+                            <TableCell sx={{ width: 8 }}></TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -97,18 +106,18 @@ export default function Waiting() {
                                     </TableCell>
                                 </TableRow>
                                 <TableRow>
-                                    <TableCell colSpan={5} sx={{ paddingBottom: 0, paddingTop: 0 }}>
+                                    <TableCell colSpan={5} sx={{ p: 0 }}>
                                         <Collapse in={taskSelected === index} timeout="auto" unmountOnExit>
                                             <Box sx={{
                                                 display: "flex",
-                                                justifyContent: "flex-end",
+                                                justifyContent: "end",
                                                 alignItems: "start",
                                                 width: "100%",
                                                 px: 8,
                                                 py: 1,
                                             }}>
-                                                <Button variant="contained" onClick={() => { }} startIcon={<EditRoundedIcon />}>
-                                                    Edit
+                                                <Button variant="outlined" color='error' onClick={() => deleteTask(task.uid)} startIcon={<DeleteRoundedIcon />}>
+                                                    Delete
                                                 </Button>
                                             </Box>
                                             <Box sx={{
@@ -138,7 +147,7 @@ export default function Waiting() {
                                                     justifyContent: "start",
                                                     flexDirection: "column",
                                                     alignItems: "start",
-                                                    width: "33%",
+                                                    width: "34%",
                                                     pr: 1,
                                                 }}>
                                                     <Typography variant="h5" gutterBottom>

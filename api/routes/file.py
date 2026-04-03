@@ -14,8 +14,7 @@ class FileOprations:
         if not sar in ["N/A", "1:1"]:
             try:
                 sar_w, sar_h = map(float, sar.split(":"))
-                if abs(sar_w - sar_h) / max(sar_w, sar_h) > 0.005:
-                    return f"scale=trunc(iw*{sar_w/sar_h}/2)*2:trunc(ih/2)*2"
+                return f"scale=trunc(iw*{sar_w/sar_h}/2)*2:trunc(ih/2)*2"
             except Exception:
                 return ""
         return ""
