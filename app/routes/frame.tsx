@@ -20,17 +20,12 @@ import { useNavigate, Outlet, useLocation } from "react-router";
 
 import { useState } from "react";
 
-import { useErrorMsg } from "../components/error_popout";
-import { getLocalStorage } from "../hooks/storage";
 import AppBarComponent from "../components/appbar";
 import InsertTask from "../components/insert_task";
 
 
 
 export default function Home() {
-    const apiUrl = getLocalStorage("apiUrl", "local");
-    const { pushMsg } = useErrorMsg();
-
     const location = useLocation();
     const navigate = useNavigate();
 

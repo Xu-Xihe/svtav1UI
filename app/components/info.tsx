@@ -83,7 +83,11 @@ export function TaskInfoComponent({ taskInfo }: { taskInfo: TaskInfo }) {
                     ["Video Bit Rate", `${(taskInfo.args.video_br / 1000 / 1000).toFixed(2)} Mbps`],
                     ["Audio Bit Rate", `${(taskInfo.args.audio_br / 1000).toFixed(2)} kbps`],
                 ].map(([key, value]) => (
-                    <Typography key={key} sx={{ pl: 2 }}>
+                    <Typography key={key} sx={{
+                        pl: 2,
+                        overflowWrap: "break-word",
+                        wordBreak: "break-word",
+                    }}>
                         <b>{key}:</b> {value}
                     </Typography>
                 ))}

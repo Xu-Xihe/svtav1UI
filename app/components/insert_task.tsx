@@ -13,8 +13,6 @@ import {
     ListItemText,
     ListItemIcon,
     IconButton,
-    TextField,
-    Autocomplete,
     Switch,
     Tooltip,
     Slider,
@@ -22,12 +20,10 @@ import {
     Select,
     MenuItem,
 } from "@mui/material";
-import CreateNewFolderRoundedIcon from '@mui/icons-material/CreateNewFolderRounded';
 import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
-import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import RemoveCircleRoundedIcon from '@mui/icons-material/RemoveCircleRounded';
 import AddCircleRoundedIcon from '@mui/icons-material/AddCircleRounded';
 
@@ -42,11 +38,8 @@ import { api } from "../hooks/api";
 import { FileInfoComponent } from "./info";
 import type { Settings, TaskInfo, FileInfo, TranscodeInfo } from "../hooks/model";
 import { Rotate } from "../hooks/model";
-
-interface PathInfo {
-    dir: string[]
-    file: string[]
-}
+import PathSelector from "./pathselector";
+import type { PathInfo } from "./pathselector";
 
 interface Taskls {
     input: FileInfo
@@ -58,14 +51,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
     const { pushMsg, pushError } = useErrorMsg();
     const navigate = useNavigate();
 
-    const [openNewFolder, setOpenNewFolder] = useState("");
-    const [inserting, setInserting] = useState(false);
-
     // Path state
-    const [pathList, setPathList] = useState<PathInfo>({
-        dir: [],
-        file: [],
-    });
     const [tempPath, setTempPath] = useLocalStorage("tempPath", "/", "local");
 
     // Input state
@@ -92,6 +78,12 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
     // Task state
     const [taskInfo, setTaskInfo] = useState<Taskls[]>([]);
     const [outputDir, setOutputDir] = useLocalStorage("outputDir", "/", "local");
+    const [inserting, setInserting] = useState(false);
+    const getFileStat = (path: string) => {
+        if (path === undefined) return "output";
+        return path.split("/").pop()?.split(".").slice(0, -1).join(".")
+    };
+
 
     // Network functions
     const fetchSettings = () => {
@@ -102,30 +94,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
             .catch(error => {
                 pushError(error, "System settings");
             })
-    }
-
-    const fetchFileList = (path: string) => {
-        if (path === "") path = "/";
-        api.get(`${apiUrl}/path/ls?path_str=${path}`).json<PathInfo>()
-            .then(data => {
-                setPathList(data);
-            })
-            .catch(error => {
-                pushError(error, "Fetch file list");
-            })
-    }
-
-    const makeDir = () => {
-        api.get(`${apiUrl}/path/mkdir?path_str=${outputDir}/${openNewFolder}`)
-            .then(() => {
-                setOutputDir(prev => ((prev === "/" ? "" : prev) + "/" + openNewFolder).replaceAll("//", "/"));
-                setOpenNewFolder("");
-            })
-            .catch(error => {
-                pushError(error, "Create new folder");
-            })
-    }
-
+    };
 
 
     // Event handlers
@@ -161,7 +130,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
             const newTask: TaskInfo = {
                 uid: org_task?.uid,
                 input: taskInfo.map(t => t.input),
-                output: outputDir + "/" + taskInfo[0].input.path.split("/").pop()?.split(".").slice(0, -1).join(".").replaceAll("//", "/") + ".mp4",
+                output: outputDir + getFileStat(taskInfo[0].input.path) + ".mp4",
                 args: multiargs,
                 settings: settingsInfo,
             } as TaskInfo;
@@ -172,7 +141,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                 const newTask: TaskInfo = {
                     uid: i === 0 ? org_task?.uid : undefined,
                     input: [taskInfo[i].input],
-                    output: outputDir + "/" + taskInfo[i].input.path.split("/").pop()?.split(".").slice(0, -1).join(".").replaceAll("//", "/") + ".mp4",
+                    output: outputDir + getFileStat(taskInfo[i].input.path) + ".mp4",
                     args: taskInfo[i].trans,
                     settings: settingsInfo,
                 } as TaskInfo;
@@ -219,25 +188,13 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                 setTaskInfo(prev => [...prev, { input: org_task.input[0], trans: org_task.args } as Taskls]);
             }
             setSettingsInfo(org_task.settings);
-            setOutputDir(org_task.output.split("/").slice(0, -1).join("/") || "/");
+            setOutputDir(org_task.output);
         }
         else {
             // Initialize states when dialog opens
             fetchSettings();
         }
     }, [, open]);
-
-    useEffect(() => {
-        if (!open) return;
-        if (tempPath === "") setTempPath("/");
-        fetchFileList(tempPath);
-    }, [tempPath]);
-
-    useEffect(() => {
-        if (!open) return;
-        if (outputDir === "") setOutputDir("/");
-        fetchFileList(outputDir);
-    }, [outputDir]);
 
     useEffect(() => {
         if (!multiInOne) return;
@@ -266,29 +223,6 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                 gap: 1,
                 p: 3,
             }}>
-                <Dialog open={openNewFolder !== ""} onClose={() => setOpenNewFolder("")} fullWidth>
-                    <DialogTitle>
-                        <Typography variant="h6" fontWeight="bold">
-                            Create New Folder
-                        </Typography>
-                    </DialogTitle>
-                    <DialogContent>
-                        <TextField
-                            label="Folder Name"
-                            variant="outlined"
-                            sx={{ mt: 1, width: "100%" }}
-                            onChange={(e) => setOpenNewFolder(e.target.value)}
-                        />
-                    </DialogContent>
-                    <DialogActions sx={{ pb: 3, pr: 3, gap: 1 }}>
-                        <Button onClick={() => setOpenNewFolder("")} variant="outlined">
-                            Cancel
-                        </Button>
-                        <Button variant="contained" onClick={() => makeDir()} disabled={openNewFolder === ""}>
-                            Create
-                        </Button>
-                    </DialogActions>
-                </Dialog>
                 <Box sx={{
                     display: "flex",
                     flexDirection: "column",
@@ -368,25 +302,12 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                                     <IconButton onClick={() => { handleInsert(tempPath); setExtendInputInfo(-2); }}>
                                         <CheckRoundedIcon color="success" />
                                     </IconButton>
-                                    <IconButton onClick={() => setTempPath(tempPath.split('/').slice(0, -1).join('/'))}>
-                                        <ArrowBackRoundedIcon color="primary" />
-                                    </IconButton>
                                 </ListItemIcon>
                                 <ListItemText sx={{ pr: 1 }}>
-                                    <Autocomplete
-                                        disableCloseOnSelect
-                                        disablePortal
-                                        value={tempPath}
-                                        onOpen={() => fetchFileList(tempPath)}
-                                        options={[...pathList.dir.map((dir) => (tempPath === "/" ? "/" + dir : tempPath + "/" + dir).replaceAll("//", "/")), ...pathList.file.map((file) => tempPath + "/" + file)]}
-                                        sx={{ width: "100%" }}
-                                        onInputChange={(_, value) => setTempPath(value === "" ? "/" : value)}
-                                        renderInput={(params) => <TextField
-                                            {...params}
-                                            multiline
-                                            label="Path"
-                                            variant="outlined"
-                                        />}
+                                    <PathSelector
+                                        label="Path"
+                                        onClose={(path) => setTempPath(path)}
+                                        org={tempPath}
                                     />
                                 </ListItemText>
                             </ListItem>
@@ -416,24 +337,13 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                         alignItems: "center",
                         justifyContent: "space-around",
                     }}>
-                        <Autocomplete
-                            disableCloseOnSelect
-                            disablePortal
-                            value={outputDir}
-                            onOpen={() => fetchFileList(outputDir)}
-                            options={[...pathList.dir.map((dir) => (outputDir === "/" ? "/" + dir : outputDir + "/" + dir).replaceAll("//", "/"))]}
-                            sx={{ width: "calc(100% - 68px)" }}
-                            onInputChange={(_, value) => setOutputDir(value === "" ? "/" : value)}
-                            renderInput={(params) => <TextField
-                                {...params}
-                                multiline
-                                label="Output Dir"
-                                variant="outlined"
-                            />}
+                        <PathSelector
+                            label="Output Dir"
+                            onClose={(path) => setOutputDir(path)}
+                            org={outputDir}
+                            type={multiInOne ? "file" : "dir"}
+                            addDir
                         />
-                        <IconButton onClick={() => setOpenNewFolder("new_folder")}>
-                            <CreateNewFolderRoundedIcon color="primary" />
-                        </IconButton>
                     </Box>
                     <Divider />
                     {!multiInOne && taskInfo.map((task, index) => (
@@ -448,7 +358,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                                 File {index + 1}
                             </Typography>
                             {[
-                                ["Output Path", `${(outputDir === "/" ? "/" : outputDir + "/").replaceAll("//", "/")}${task.input.path.split("/").slice(-1)[0].split(".").slice(0, -1).join(".")}.mp4`],
+                                ["Output Path", `${outputDir}${getFileStat(task.input.path)}.mp4`],
                                 ["Video Bitrate", `${(task.trans.video_br / 1000 / 1000).toFixed(2)} Mbps`],
                                 ["Audio Bitrate", `${(task.trans.audio_br / 1000).toFixed(2)} kbps`],
                             ].map(([key, value]) => (
@@ -469,7 +379,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                             File
                         </Typography>
                         {[
-                            ["Output Path", `${outputDir === "/" ? "/" : outputDir + "/"}${taskInfo[0]?.input.path.split("/").slice(-1)[0].split(".").slice(0, -1).join(".")}.mp4`],
+                            ["Output Path", `${outputDir}${getFileStat(taskInfo[0]?.input.path)}.mp4`],
                             ["Video Bitrate", `${(multiargs.video_br / 1000 / 1000).toFixed(2)} Mbps`],
                             ["Audio Bitrate", `${(multiargs.audio_br / 1000).toFixed(2)} kbps`],
                         ].map(([key, value]) => (
@@ -629,6 +539,18 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                                         step={1}
                                         valueLabelDisplay="auto"
                                         sx={{ width: "88%" }}
+                                    />
+                            ],
+                            ["minsection_pct", "Minimum percentage of the section that must be used.",
+                                (s: Settings) =>
+                                    <Slider
+                                        value={s.minsection_pct}
+                                        onChange={(e, value) => setSettingsInfo({ ...s, minsection_pct: value as number })}
+                                        min={0}
+                                        max={100}
+                                        step={1}
+                                        valueLabelDisplay="auto"
+                                        sx={{ width: 288 }}
                                     />
                             ],
                             ["maxsection_pct", "Maximum percentage of the section that can be used.",

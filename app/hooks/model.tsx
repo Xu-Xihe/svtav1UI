@@ -20,6 +20,7 @@ export interface Settings {
 
     overshoot_pct: number
     undershoot_pct: number
+    minsection_pct: number
     maxsection_pct: number
     keyint: string
     lookahead: number

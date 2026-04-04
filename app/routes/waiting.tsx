@@ -175,9 +175,10 @@ export default function Waiting() {
                                                         {[
                                                             ["Preset", task.settings.preset],
                                                             ["Retry", task.settings.retry],
-                                                            ["Overshoot", task.settings.overshoot_pct],
-                                                            ["Undershoot", task.settings.undershoot_pct],
-                                                            ["Max Section", task.settings.maxsection_pct],
+                                                            ["Overshoot Pct", task.settings.overshoot_pct],
+                                                            ["Undershoot Pct", task.settings.undershoot_pct],
+                                                            ["Min Section Pct", task.settings.minsection_pct],
+                                                            ["Max Section Pct", task.settings.maxsection_pct],
                                                             ["Keyint", task.settings.keyint],
                                                             ["Lookahead", task.settings.lookahead],
                                                             ["SCD", task.settings.scd ? "Enabled" : "Disabled"],

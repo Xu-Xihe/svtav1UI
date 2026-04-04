@@ -75,6 +75,7 @@ class Settings(BaseModel):
     preset: int = Field(default=6, ge=0, le=12)
     overshoot_pct: int = Field(default=100, ge=0, le=100)
     undershoot_pct: int = Field(default=10, ge=0, le=100)
+    minsection_pct: int = Field(default=80, ge=0, le=100)
     maxsection_pct: int = Field(default=6000, ge=0, le=10000)
     keyint: str = "6s"
     lookahead: int = Field(default=120, ge=0, le=120)

@@ -112,7 +112,10 @@ class FileOprations:
                 "Input files must have the same resolution, frame rate and SAR."
             )
 
-        avg_br = round(sum((f.size * 8 / f.duration - f.audio_bit_rate) for f in infos))
+        avg_br = round(
+            sum((f.size * 8 / f.duration - f.audio_bit_rate) for f in infos)
+            / len(infos)
+        )
         max_br = max(f.bit_rate for f in infos)
         v_br = max_br if abs(max_br - avg_br) / avg_br <= 0.15 else avg_br
 

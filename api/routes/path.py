@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Query
 from pathlib import Path
 from pypinyin import lazy_pinyin
+from natsort import natsorted
 
 from src.models import ApiPathls
 
@@ -35,8 +36,8 @@ async def list_directory(
             ]:
                 file.append(p.name)
     return ApiPathls(
-        dir=sorted(dir, key=lambda x: lazy_pinyin(x)),
-        file=sorted(file, key=lambda x: lazy_pinyin(x)),
+        dir=natsorted(dir, key=lambda x: lazy_pinyin(x)),
+        file=natsorted(file, key=lambda x: lazy_pinyin(x)),
     )
 
 

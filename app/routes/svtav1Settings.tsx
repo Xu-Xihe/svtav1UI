@@ -14,7 +14,7 @@ import { useErrorMsg } from "../components/error_popout";
 import { getLocalStorage } from "../hooks/storage";
 import { api } from "../hooks/api";
 import SettingItem from "../components/setting_item";
-import { type Settings, Rotate } from "../hooks/model";
+import { type Settings } from "../hooks/model";
 
 
 export default function SysSettings() {
@@ -141,6 +141,23 @@ export default function SysSettings() {
                                 />
                                 <Typography variant="body2" color="text.secondary">
                                     {s.undershoot_pct}
+                                </Typography>
+                            </>
+                    ],
+                    ["minsection_pct", "Minimum percentage of the section that must be used.",
+                        (s: Settings) =>
+                            <>
+                                <Slider
+                                    value={s.minsection_pct}
+                                    onChange={(e, value) => updateSettings({ ...s, minsection_pct: value as number })}
+                                    min={0}
+                                    max={100}
+                                    step={1}
+                                    valueLabelDisplay="auto"
+                                    sx={{ width: 288 }}
+                                />
+                                <Typography variant="body2" color="text.secondary">
+                                    {s.minsection_pct}
                                 </Typography>
                             </>
                     ],

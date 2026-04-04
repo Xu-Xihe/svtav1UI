@@ -141,7 +141,7 @@ class TaskOprations:
             "-threads",
             "0",
             "-svtav1-params",
-            f"rc=1:overshoot-pct={task.settings.overshoot_pct}:undershoot-pct={task.settings.undershoot_pct}:maxsection-pct={task.settings.maxsection_pct}:keyint={task.settings.keyint}:lookahead={task.settings.lookahead}:scd={int(task.settings.scd)}",
+            f"rc=1:overshoot-pct={task.settings.overshoot_pct}:undershoot-pct={task.settings.undershoot_pct}:minsection-pct={task.settings.minsection_pct}:maxsection-pct={task.settings.maxsection_pct}:keyint={task.settings.keyint}:lookahead={task.settings.lookahead}:scd={int(task.settings.scd)}",
             "-preset",
             str(task.settings.preset),
             *(
