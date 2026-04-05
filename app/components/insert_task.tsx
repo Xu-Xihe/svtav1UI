@@ -346,7 +346,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                             label="Output Dir"
                             onClose={(path) => setOutputDir(path)}
                             org={outputDir}
-                            type={multiInOne ? "file" : "dir"}
+                            type="dir"
                             addDir
                         />
                     </Box>

@@ -33,6 +33,8 @@ async def list_directory(
                 ".flv",
                 ".wmv",
                 ".ts",
+                ".f4v",
+                ".m4v",
             ]:
                 file.append(p.name)
     return ApiPathls(

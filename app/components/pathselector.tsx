@@ -162,8 +162,8 @@ export default function PathSelector({ label, onClose, type, org, addDir }: { la
                     ]}
                     sx={{ width: "calc(100% - 68px)" }}
                     onInputChange={(_, value) => {
-                        fetchFileList(value.slice(0, value.lastIndexOf("/") + 1));
-                        setPath(value === "" ? "/" : value);
+                        fetchFileList(value.slice(0, value.lastIndexOf("/") + 1).replaceAll("'", "").replaceAll('"', ""));
+                        setPath(value === "" ? "/" : value.replaceAll("'", "").replaceAll('"', ""));
                     }}
                     renderInput={(params) => <TextField
                         {...params}
