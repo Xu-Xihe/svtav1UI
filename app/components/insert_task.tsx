@@ -109,9 +109,14 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                 files = filels.map(file => path === "/" ? "/" + file : path + "/" + file);
             }
             for (const file of files) {
-                const input = await api.get(`${apiUrl}/file/info?file_path=${file}`).json<FileInfo>();
-                const trans = await api.post(`${apiUrl}/file/single`, { json: input }).json<TranscodeInfo>();
-                setTaskInfo(prev => [...prev, { input, trans } as Taskls]);
+                try {
+                    const input = await api.get(`${apiUrl}/file/info?file_path=${file}`).json<FileInfo>();
+                    const trans = await api.post(`${apiUrl}/file/single`, { json: input }).json<TranscodeInfo>();
+                    setTaskInfo(prev => [...prev, { input, trans } as Taskls]);
+                }
+                catch (error) {
+                    pushError(error, "Fetch File Info: " + file);
+                }
             }
         }
         catch (error) {

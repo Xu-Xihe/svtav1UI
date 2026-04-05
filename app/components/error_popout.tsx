@@ -18,6 +18,7 @@ export const useErrorMsg = create<ErrorMsgState>((set, get) => ({
     open: true,
 
     pushMsg: (text, level = "error") => {
+        if (!open) return;
         const id = Date.now() + Math.random().toString(16).slice(2);
         set((state) => ({
             msg: [...state.msg, { id, text, level }],

@@ -108,6 +108,7 @@ export default function Running() {
                                 api.get(`${apiUrl}/task/running/cancel`)
                                     .then(() => {
                                         pushMsg("Task cancelled successfully.", "info");
+                                        setCancelDialogOpen(false);
                                     })
                                     .catch((error) => {
                                         pushError(error, "Cancel Task");

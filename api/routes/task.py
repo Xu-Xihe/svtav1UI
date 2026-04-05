@@ -33,12 +33,15 @@ class TaskOprations:
         r"elapsed=\s*(?P<elapsed>\d+:\d{2}:\d{2}\.?\d*)"
     )
     _stop_transcoding = False
+    _pause = asyncio.Event()
 
     @classmethod
     async def init(cls):
         task = None
+        cls._pause.set()
         try:
             while True:
+                await cls._pause.wait()
                 try:
                     task = await cls.pre_check()
                 except Exception:
@@ -179,7 +182,7 @@ class TaskOprations:
             # Check if the task is cancelled
             if cls._stop_transcoding:
                 cls._stop_transcoding = False
-                proc.terminate()
+                proc.kill()
                 await proc.wait()
                 task.output.unlink(missing_ok=True)
                 return "Transcoding cancelled by user."
@@ -288,7 +291,9 @@ class TaskOprations:
         if cls._running is None:
             return None
 
-        cls._running.cpu_usage = psutil.cpu_percent()
+        cpu = psutil.cpu_percent()
+        if cpu > 0:
+            cls._running.cpu_usage = cpu
         cls._running.ram_usage = psutil.virtual_memory().percent
         cls._running.consumed_time = (
             datetime.now(timezone.utc) - cls._running.start_time
@@ -388,3 +393,18 @@ async def get_completed():
 @task_router.post("/completed/clear", response_model=None)
 async def clear_completed():
     await db.execute("DELETE FROM completed;")
+
+
+@task_router.post("/status", response_model=None)
+async def pause_transcoding(
+    set: bool = Query(..., description="Whether to pause or resume transcoding")
+):
+    if set:
+        TaskOprations._pause.set()
+    else:
+        TaskOprations._pause.clear()
+
+
+@task_router.get("/status", response_model=bool)
+async def get_status():
+    return TaskOprations._pause.is_set()

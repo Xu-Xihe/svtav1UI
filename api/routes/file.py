@@ -1,5 +1,6 @@
 import asyncio
 import json
+import shlex
 
 from fastapi import APIRouter, HTTPException, Query
 from pathlib import Path
@@ -32,6 +33,8 @@ class FileOprations:
             str(path.resolve()),
         ]
 
+        print(" ".join(shlex.quote(arg) for arg in cmd))
+
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
@@ -43,8 +46,8 @@ class FileOprations:
             raise RuntimeError(f"ffprobe failed: {stderr.decode()}")
 
         data = json.loads(stdout)["streams"]
-        video: dict = data[0] if data[0]["codec_type"] == "video" else data[1]
-        audio: dict = data[1] if data[1]["codec_type"] == "audio" else data[0]
+        video = next((s for s in data if s.get("codec_type") == "video"), {})
+        audio = next((s for s in data if s.get("codec_type") == "audio"), {})
 
         if (
             not video.get("codec_name")

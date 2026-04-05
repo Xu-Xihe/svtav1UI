@@ -109,14 +109,21 @@ export default function PathSelector({ label, onClose, type, org, addDir }: { la
                         label="Folder Name"
                         variant="outlined"
                         sx={{ mt: 1, width: "100%" }}
-                        onChange={(e) => setOpenNewFolder(e.target.value)}
+                        onChange={(e) => setOpenNewFolder(e.target.value.replaceAll("/", "").replaceAll("&", " "))}
                     />
                 </DialogContent>
                 <DialogActions sx={{ pb: 3, pr: 3, gap: 1 }}>
                     <Button onClick={() => setOpenNewFolder("")} variant="outlined">
                         Cancel
                     </Button>
-                    <Button variant="contained" onClick={() => makeDir()} disabled={openNewFolder === ""}>
+                    <Button
+                        variant="contained"
+                        onClick={() => {
+                            makeDir();
+                            onClose(path + openNewFolder + "/");
+                        }}
+                        disabled={openNewFolder === ""}
+                    >
                         Create
                     </Button>
                 </DialogActions>
@@ -155,12 +162,7 @@ export default function PathSelector({ label, onClose, type, org, addDir }: { la
                     ]}
                     sx={{ width: "calc(100% - 68px)" }}
                     onInputChange={(_, value) => {
-                        if (value.at(-1) === "/") {
-                            fetchFileList(value);
-                        }
-                        else if (value.length < path.length) {
-                            fetchFileList(path.slice(0, path.lastIndexOf("/") + 1));
-                        }
+                        fetchFileList(value.slice(0, value.lastIndexOf("/") + 1));
                         setPath(value === "" ? "/" : value);
                     }}
                     renderInput={(params) => <TextField

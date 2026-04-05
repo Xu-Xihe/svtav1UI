@@ -7,6 +7,7 @@ import {
     Badge,
     Avatar,
     Typography,
+    Tooltip,
 } from "@mui/material";
 import ContrastRoundedIcon from '@mui/icons-material/ContrastRounded';
 import CableRoundedIcon from '@mui/icons-material/CableRounded';
@@ -27,7 +28,7 @@ import useLocalStorage, { getLocalStorage } from "../hooks/storage";
 export default function AppBarComponent() {
     const apiUrl = getLocalStorage("apiUrl", "local");
     const navigate = useNavigate();
-    const { setOpen } = useErrorMsg();
+    const { setOpen, pushError } = useErrorMsg();
 
     const theme = useTheme();
     const { setMode } = useColorScheme();
@@ -35,6 +36,7 @@ export default function AppBarComponent() {
     const [themeMode, setThemeMode] = useLocalStorage<'light' | 'dark' | 'system'>('theme-mode', 'system', 'local');
 
     const [apiConnect, setApiConnect] = useState<boolean>(false);
+    const [status, setStatus] = useState<boolean>(true);
 
     useQuery({
         queryKey: ["health"],
@@ -54,7 +56,7 @@ export default function AppBarComponent() {
         retry: 0,
         refetchInterval: 3000,
         refetchIntervalInBackground: true,
-    })
+    });
 
     const changeThemeMode = () => {
         let newMode: 'light' | 'dark' | 'system' = themeMode;
@@ -69,14 +71,29 @@ export default function AppBarComponent() {
         }
         setMode(newMode);
         setThemeMode(newMode);
-    }
+    };
 
 
     useEffect(() => {
         setMode(themeMode);
     }, [themeMode]);
 
+    useEffect(() => {
+        api.post(`${apiUrl}/task/status`, { searchParams: { set: status } }).json()
+            .catch((error) => {
+                pushError(error, "Set task status");
+            })
+    }, [status]);
 
+    useEffect(() => {
+        api.get(`${apiUrl}/task/status`).json<boolean>()
+            .then((data: boolean) => {
+                setStatus(data);
+            })
+            .catch((error) => {
+                pushError(error, "Get task status");
+            });
+    }, []);
 
     return (
         <>
@@ -110,11 +127,24 @@ export default function AppBarComponent() {
                         display: 'flex',
                         gap: 1,
                     }}>
-                        <IconButton disableRipple>
-                            <Badge variant="dot" color={apiConnect ? "success" : "error"}>
-                                <CableRoundedIcon />
-                            </Badge>
-                        </IconButton>
+                        <Tooltip title={<>
+                            Green: OK
+                            <br />
+                            Orange: Pause when current task finished
+                            <br />
+                            Red: Disconnected
+                        </>}>
+                            <IconButton onClick={() => setStatus(!status)}>
+                                <Badge variant="dot" color={apiConnect
+                                    ? status
+                                        ? "success"
+                                        : "warning"
+                                    : "error"
+                                }>
+                                    <CableRoundedIcon />
+                                </Badge>
+                            </IconButton>
+                        </Tooltip>
                         <IconButton onClick={() => changeThemeMode()}>
                             <ContrastRoundedIcon />
                         </IconButton>

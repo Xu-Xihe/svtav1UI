@@ -49,7 +49,7 @@ class FileInfo(BaseModel):
     sar: str
     bit_rate: int
     frame_rate: float
-    duration: int
+    duration: float
     audio_bit_rate: int
 
     model_config = {"json_encoders": {Path: lambda p: str(p.resolve())}}
