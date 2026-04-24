@@ -1,7 +1,8 @@
 import asyncio
+import logging
 import traceback
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, logger
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -14,10 +15,20 @@ from routes.settings import settings_router, SettingsManager
 from src.database import Database
 
 
+class IgnoreHealthFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        if "/health" in msg or "/task/running" in msg:
+            return False
+        return True
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await Database.init()
     await SettingsManager.init()
+    logger = logging.getLogger("uvicorn.access")
+    logger.addFilter(IgnoreHealthFilter())
     queue = asyncio.create_task(TaskOprations.init())
     yield
     queue.cancel()

@@ -19,6 +19,9 @@ import SettingItem from "../components/setting_item";
 import { type Settings, Rotate } from "../hooks/model";
 
 
+const UI_VERSION = "1.0.0";
+
+
 export default function SysSettings() {
     const apiUrl = getLocalStorage("apiUrl", "local");
     const { pushError } = useErrorMsg();
@@ -28,7 +31,9 @@ export default function SysSettings() {
         delete_source: true,
         rotate: null,
         retry: 3,
+        max_bitrate_mb: 48,
     } as Settings);
+    const [version, setVersion] = useState<string>("");
 
     const fetchSettings = () => {
         api.get(`${apiUrl}/settings`).json<Settings>()
@@ -51,6 +56,13 @@ export default function SysSettings() {
 
     useEffect(() => {
         fetchSettings();
+        api.get(`${apiUrl}/settings/version`).json<string>()
+            .then(data => {
+                setVersion(data);
+            })
+            .catch(error => {
+                pushError(error, "System settings");
+            })
     }, []);
 
     return (
@@ -134,6 +146,31 @@ export default function SysSettings() {
                                     {s.retry} times
                                 </Typography>
                             </>
+                    ],
+                    ["Max Bitrate", "Limit the maximum bitrate for video encoding.",
+                        (s: Settings) =>
+                            <>
+                                <Slider
+                                    value={s.max_bitrate_mb}
+                                    onChange={(e, value) => updateSettings({ ...s, max_bitrate_mb: value as number })}
+                                    min={8}
+                                    max={888}
+                                    step={0.1}
+                                    valueLabelDisplay="auto"
+                                    sx={{ width: 288 }}
+                                />
+                                <Typography variant="body2" color="text.secondary">
+                                    {s.max_bitrate_mb} Mbps
+                                </Typography>
+                            </>
+                    ],
+                    ["API Version", "The current version of the API.",
+                        (s: Settings) =>
+                            <Typography variant="body1">{version}</Typography>
+                    ],
+                    ["UI Version", "The current version of the UI.",
+                        (s: Settings) =>
+                            <Typography variant="body1">{UI_VERSION}</Typography>
                     ],
                 ] as [string, string, (s: Settings) => React.ReactNode][]).map(([title, description, component]) => (
                     <SettingItem title={title} description={description} key={title}>

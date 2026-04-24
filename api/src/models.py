@@ -5,6 +5,9 @@ from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
 
+VERSION = "1.0.0"
+
+
 # Enum
 class CodecInfo(BaseModel):
     name: str
@@ -23,6 +26,7 @@ class CodecScale(float, Enum):
     mpeg1 = 0.15
     mp4v = 0.15
     prores = 0.3
+    flv1 = 0.4
 
 
 class Codec(str, Enum):
@@ -37,6 +41,7 @@ class Codec(str, Enum):
     mpeg1 = "mpeg1video"
     mp4v = "mp4v"
     prores = "prores"
+    flv1 = "flv1"
 
 
 # Base Models
@@ -71,6 +76,8 @@ class Settings(BaseModel):
     delete_source: bool = True
     rotate: Optional[int] = Field(default=None, ge=0, le=6)
     retry: int = Field(default=3, ge=0, le=8)
+
+    max_bitrate_mb: float = Field(default=48, ge=8)
 
     preset: int = Field(default=6, ge=0, le=12)
     overshoot_pct: int = Field(default=100, ge=0, le=100)

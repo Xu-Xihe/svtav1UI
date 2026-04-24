@@ -18,6 +18,8 @@ export interface Settings {
     rotate: number | null
     retry: number
 
+    max_bitrate_mb: number
+
     overshoot_pct: number
     undershoot_pct: number
     minsection_pct: number

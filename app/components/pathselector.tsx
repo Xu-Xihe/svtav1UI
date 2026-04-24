@@ -76,7 +76,6 @@ export default function PathSelector({ label, onClose, type, org, addDir }: { la
                     }
                 }
                 else {
-
                     if (type === "file") {
 
                         pushMsg("Now it is a directory. Please select a file", "error");

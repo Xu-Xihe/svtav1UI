@@ -73,17 +73,28 @@ export default function AppBarComponent() {
         setThemeMode(newMode);
     };
 
+    const changeStatus = () => {
+        setStatus(!status);
+        api.post(`${apiUrl}/task/status`, { searchParams: { set: !status } }).json()
+            .catch((error) => {
+                pushError(error, "Set task status");
+            })
+    };
+
 
     useEffect(() => {
         setMode(themeMode);
     }, [themeMode]);
 
     useEffect(() => {
-        api.post(`${apiUrl}/task/status`, { searchParams: { set: status } }).json()
-            .catch((error) => {
-                pushError(error, "Set task status");
+        api.get(`${apiUrl}/task/status`, { searchParams: { set: !status } }).json<boolean>()
+            .then((data) => {
+                setStatus(data);
             })
-    }, [status]);
+            .catch((error) => {
+                pushError(error, "Get task status");
+            });
+    }, []);
 
     useEffect(() => {
         api.get(`${apiUrl}/task/status`).json<boolean>()
@@ -134,7 +145,7 @@ export default function AppBarComponent() {
                             <br />
                             Red: Disconnected
                         </>}>
-                            <IconButton onClick={() => setStatus(!status)}>
+                            <IconButton onClick={changeStatus}>
                                 <Badge variant="dot" color={apiConnect
                                     ? status
                                         ? "success"

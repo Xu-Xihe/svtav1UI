@@ -140,7 +140,7 @@ class TaskOprations:
             "-c:v",
             "libsvtav1",
             "-b:v",
-            str(task.args.video_br),
+            str(min(task.args.video_br, task.settings.max_bitrate_mb * 1000 * 1000)),
             "-threads",
             "0",
             "-svtav1-params",
@@ -243,6 +243,7 @@ class TaskOprations:
         if proc.returncode == 0:
             return ""
         else:
+            task.output.unlink(missing_ok=True)
             return f"ffmpeg failed: {proc.returncode} {await proc.stderr.read() if proc.stderr else 'Unknown error'}"
 
     @classmethod

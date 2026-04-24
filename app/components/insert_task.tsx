@@ -26,10 +26,15 @@ import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import RemoveCircleRoundedIcon from '@mui/icons-material/RemoveCircleRounded';
 import AddCircleRoundedIcon from '@mui/icons-material/AddCircleRounded';
+import BlurOnRoundedIcon from '@mui/icons-material/BlurOnRounded';
 
 import React, { useEffect, useState } from 'react';
 
 import { useNavigate } from "react-router";
+
+import { DragDropProvider } from '@dnd-kit/react';
+import { useSortable } from '@dnd-kit/react/sortable';
+import { move } from '@dnd-kit/helpers';
 
 import { useErrorMsg } from "../components/error_popout";
 import { getLocalStorage } from "../hooks/storage";
@@ -46,6 +51,8 @@ interface Taskls {
     trans: TranscodeInfo
 }
 
+
+
 export default function InsertTask({ org_task, open, onClose, onCancelled }: { org_task?: TaskInfo; open: boolean; onClose: () => void; onCancelled: () => void }) {
     const apiUrl = getLocalStorage("apiUrl", "local");
     const { pushMsg, pushError } = useErrorMsg();
@@ -57,7 +64,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
     // Input state
     const [multiInOne, setMultiInOne] = useState(false);
     const [multiargs, setMultiargs] = useState<TranscodeInfo>({ sar_fix: "", video_br: 0, audio_br: 0 } as TranscodeInfo);
-    const [extendInputInfo, setExtendInputInfo] = useState(-2); // -2 for none, >=0 for showing input info of taskInfo[extendInputInfo]
+    const [extendInputInfo, setExtendInputInfo] = useState<string>(""); // -2 for none, >=0 for showing input info of taskInfo[extendInputInfo]
 
     // Settings state
     const [settingsInfo, setSettingsInfo] = useState<Settings>({
@@ -65,6 +72,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
         delete_source: true,
         rotate: null,
         retry: 3,
+        max_bitrate_mb: 48,
         preset: 6,
         overshoot_pct: 100,
         undershoot_pct: 10,
@@ -110,6 +118,12 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
             }
             for (const file of files) {
                 try {
+                    for (const t of taskInfo) {
+                        if (t.input.path === file) {
+                            pushMsg(`File ${file} is already in the task list.`, "warning");
+                            continue;
+                        }
+                    }
                     const input = await api.get(`${apiUrl}/file/info?file_path=${file}`).json<FileInfo>();
                     const trans = await api.post(`${apiUrl}/file/single`, { json: input }).json<TranscodeInfo>();
                     setTaskInfo(prev => [...prev, { input, trans } as Taskls]);
@@ -136,7 +150,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                 uid: org_task?.uid,
                 input: taskInfo.map(t => t.input),
                 output: outputDir + getFileStat(taskInfo[0].input.path) + ".mp4",
-                args: multiargs,
+                args: { ...multiargs, video_br: Math.min(multiargs.video_br, settingsInfo.max_bitrate_mb * 1000 * 1000) } as TranscodeInfo,
                 settings: settingsInfo,
             } as TaskInfo;
             tasks = [newTask];
@@ -147,7 +161,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                     uid: i === 0 ? org_task?.uid : undefined,
                     input: [taskInfo[i].input],
                     output: outputDir + getFileStat(taskInfo[i].input.path) + ".mp4",
-                    args: taskInfo[i].trans,
+                    args: { ...taskInfo[i].trans, video_br: Math.min(taskInfo[i].trans.video_br, settingsInfo.max_bitrate_mb * 1000 * 1000) } as TranscodeInfo,
                     settings: settingsInfo,
                 } as TaskInfo;
                 tasks.push(newTask);
@@ -209,11 +223,51 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                 setMultiargs(data);
             })
             .catch(error => {
+                setMultiInOne(false);
                 pushError(error, "Multi-in-one");
             })
     }, [multiInOne, taskInfo]);
 
 
+
+    function SortableFileInput({ data, index }: { data: FileInfo; index: number }) {
+        const { ref, handleRef, isDragging } = useSortable({ id: data.path, index });
+
+        return (
+            <div ref={ref}>
+                <ListItem disablePadding>
+                    <ListItemButton onClick={() => setExtendInputInfo(extendInputInfo === data.path ? "" : data.path)}>
+                        <ListItemIcon>
+                            <IconButton
+                                sx={{ display: index === 0 && org_task !== undefined ? "none" : "flex" }}
+                                disabled={index === 0 && org_task !== undefined}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setTaskInfo(prev => prev.filter((_, i) => i !== index));
+                                }}>
+                                <RemoveCircleRoundedIcon color="error" />
+                            </IconButton>
+                        </ListItemIcon>
+                        <ListItemText sx={{ color: (theme) => theme.vars?.palette.primary.main }} secondary={data.path.split("/").slice(-1)[0]}>
+                            <b>File {index + 1}</b>
+                        </ListItemText>
+                        <ListItemIcon>
+                            {extendInputInfo === data.path ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+                        </ListItemIcon>
+                        <ListItemIcon>
+                            <Tooltip title="Drag to reorder" placement="bottom">
+                                <IconButton ref={handleRef} onPointerDown={(e) => {
+                                    e.stopPropagation();
+                                }}>
+                                    <BlurOnRoundedIcon />
+                                </IconButton>
+                            </Tooltip>
+                        </ListItemIcon>
+                    </ListItemButton>
+                </ListItem>
+            </div>
+        )
+    }
 
     return (
         <Dialog open={open} fullScreen>
@@ -256,39 +310,27 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                         </Box>
                     </Box>
                     <List>
-                        {taskInfo.map((task, index) => (
-                            <React.Fragment key={index}>
-                                <ListItem disablePadding>
-                                    <ListItemButton onClick={() => setExtendInputInfo(extendInputInfo === index ? -2 : index)}>
-                                        <ListItemIcon>
-                                            <IconButton
-                                                sx={{ display: index === 0 && org_task !== undefined ? "none" : "flex" }}
-                                                disabled={index === 0 && org_task !== undefined}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setTaskInfo(prev => prev.filter((_, i) => i !== index));
-                                                }}>
-                                                <RemoveCircleRoundedIcon color="error" />
-                                            </IconButton>
-                                        </ListItemIcon>
-                                        <ListItemText sx={{ color: (theme) => theme.vars?.palette.primary.main }} secondary={task.input.path.split("/").slice(-1)[0]}>
-                                            <b>File {index + 1}</b>
-                                        </ListItemText>
-                                        <ListItemIcon>
-                                            {extendInputInfo === index ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
-                                        </ListItemIcon>
-                                    </ListItemButton>
-                                </ListItem>
-                                <Collapse in={extendInputInfo === index} timeout="auto" unmountOnExit>
-                                    <Divider sx={{ mb: 1 }} />
-                                    <FileInfoComponent fileInfo={[task.input]} />
-                                    <Divider sx={{ mt: 1 }} />
-                                </Collapse>
-                            </React.Fragment>
-                        ))}
-                        {(extendInputInfo !== -1) && (
+                        <DragDropProvider
+                            onDragEnd={(event) => {
+                                setTaskInfo((items) => move(items as any, event) as Taskls[]);
+                            }}
+                            onDragStart={() => { setExtendInputInfo("") }}
+                        >
+                            {taskInfo.map((task, index) => (
+                                <>
+                                    <SortableFileInput key={task.input.path} data={task.input} index={index} />
+
+                                    <Collapse in={extendInputInfo === task.input.path} timeout="auto" unmountOnExit>
+                                        <Divider sx={{ mb: 1 }} />
+                                        <FileInfoComponent fileInfo={[task.input]} />
+                                        <Divider sx={{ mt: 1 }} />
+                                    </Collapse>
+                                </>
+                            ))}
+                        </DragDropProvider>
+                        {(extendInputInfo !== "yyytttqqq") && (
                             <ListItem disablePadding>
-                                <ListItemButton onClick={() => setExtendInputInfo(-1)}>
+                                <ListItemButton onClick={() => setExtendInputInfo("yyytttqqq")}>
                                     <ListItemIcon>
                                         <IconButton disableRipple>
                                             <AddCircleRoundedIcon />
@@ -298,13 +340,13 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                                 </ListItemButton>
                             </ListItem>
                         )}
-                        {extendInputInfo === -1 && (
+                        {extendInputInfo === "yyytttqqq" && (
                             <ListItem disablePadding>
                                 <ListItemIcon sx={{ gap: 1, mr: 1 }}>
-                                    <IconButton onClick={() => setExtendInputInfo(-2)}>
+                                    <IconButton onClick={() => setExtendInputInfo("")}>
                                         <RemoveCircleRoundedIcon color="error" />
                                     </IconButton>
-                                    <IconButton onClick={() => { handleInsert(tempPath); setExtendInputInfo(-2); }}>
+                                    <IconButton onClick={() => { handleInsert(tempPath); setExtendInputInfo(""); }}>
                                         <CheckRoundedIcon color="success" />
                                     </IconButton>
                                 </ListItemIcon>
@@ -312,7 +354,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                                     <PathSelector
                                         label="Path"
                                         onClose={(path) => setTempPath(path)}
-                                        org={tempPath}
+                                        org={tempPath.endsWith("/") ? tempPath : tempPath.split("/").slice(0, -1).join("/") + "/"}
                                     />
                                 </ListItemText>
                             </ListItem>
@@ -364,7 +406,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                             </Typography>
                             {[
                                 ["Output Path", `${outputDir}${getFileStat(task.input.path)}.mp4`],
-                                ["Video Bitrate", `${(task.trans.video_br / 1000 / 1000).toFixed(2)} Mbps`],
+                                ["Video Bitrate", `${(Math.min(task.trans.video_br / 1000 / 1000, settingsInfo.max_bitrate_mb)).toFixed(2)} Mbps`],
                                 ["Audio Bitrate", `${(task.trans.audio_br / 1000).toFixed(2)} kbps`],
                             ].map(([key, value]) => (
                                 <Typography key={key} variant="body2" sx={{ pl: 2 }}>
@@ -385,7 +427,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                         </Typography>
                         {[
                             ["Output Path", `${outputDir}${getFileStat(taskInfo[0]?.input.path)}.mp4`],
-                            ["Video Bitrate", `${(multiargs.video_br / 1000 / 1000).toFixed(2)} Mbps`],
+                            ["Video Bitrate", `${(Math.min(multiargs.video_br / 1000 / 1000, settingsInfo.max_bitrate_mb)).toFixed(2)} Mbps`],
                             ["Audio Bitrate", `${(multiargs.audio_br / 1000).toFixed(2)} kbps`],
                         ].map(([key, value]) => (
                             <Typography key={key} variant="body2" sx={{ pl: 2 }}>
@@ -474,27 +516,66 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                             {component(settingsInfo)}
                         </Box>
                     ))}
-                    <Box sx={{
-                        display: "flex",
-                        flexDirection: "column",
-                        width: "100%",
-                        alignItems: "flex-start",
-                    }}>
-                        <Tooltip title={"Number of times to retry if the task failed."} placement="right">
-                            <Typography variant="body1">
-                                <b>Retry:</b> {settingsInfo.retry}
-                            </Typography>
-                        </Tooltip>
-                        <Slider
-                            value={settingsInfo.retry}
-                            onChange={(e, value) => setSettingsInfo({ ...settingsInfo, retry: value as number })}
-                            min={0}
-                            max={8}
-                            step={1}
-                            valueLabelDisplay="auto"
-                            sx={{ width: "88%" }}
-                        />
-                    </Box>
+                    {([
+                        ["Retry", "Number of times to retry if the task failed.",
+                            (s: Settings) =>
+                                <Box sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    width: "100%",
+                                    justifyContent: "space-between",
+                                }}>
+                                    <Slider
+                                        value={s.retry}
+                                        onChange={(e, value) => setSettingsInfo({ ...s, retry: value as number })}
+                                        min={0}
+                                        max={8}
+                                        step={1}
+                                        valueLabelDisplay="auto"
+                                        sx={{ width: "68%" }}
+                                    />
+                                    <Typography variant="body2" color="text.secondary">
+                                        {s.retry}
+                                    </Typography>
+                                </Box>
+                        ],
+                        ["Max Bitrate", "Limit the maximum bitrate for video encoding when the calculated bitrate exceeds.",
+                            (s: Settings) =>
+                                <Box sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    width: "100%",
+                                    justifyContent: "space-between",
+                                }}>
+                                    <Slider
+                                        value={s.max_bitrate_mb}
+                                        onChange={(e, value) => setSettingsInfo({ ...s, max_bitrate_mb: value as number })}
+                                        min={8}
+                                        max={888}
+                                        step={0.1}
+                                        valueLabelDisplay="auto"
+                                        sx={{ width: "68%" }}
+                                    />
+                                    <Typography variant="body2" color="text.secondary">
+                                        {s.max_bitrate_mb} Mbps
+                                    </Typography>
+                                </Box>
+                        ]
+                    ] as [string, string, (s: Settings) => React.ReactNode][]).map(([title, description, component]) => (
+                        <Box sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            width: "100%",
+                            alignItems: "flex-start",
+                        }}>
+                            <Tooltip title={description} placement="right">
+                                <Typography variant="body1" fontWeight="bold">
+                                    {title}
+                                </Typography>
+                            </Tooltip>
+                            {component(settingsInfo)}
+                        </Box>
+                    ))}
                     <Box sx={{
                         display: "flex",
                         justifyContent: "space-between",

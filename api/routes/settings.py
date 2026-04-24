@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from pathlib import Path
 
-from src.models import Settings
+from src.models import Settings, VERSION
 
 
 PATH = Path(__file__).parent.parent / "cache" / "settings.json"
@@ -42,3 +42,11 @@ async def update_settings(settings: Settings):
     print(settings)
     SettingsManager._settings = settings
     return SettingsManager._settings
+
+
+@settings_router.get("/version", response_model=str)
+async def get_version():
+    """
+    Get the current version of the API.
+    """
+    return VERSION
