@@ -27,6 +27,7 @@ import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import RemoveCircleRoundedIcon from '@mui/icons-material/RemoveCircleRounded';
 import AddCircleRoundedIcon from '@mui/icons-material/AddCircleRounded';
 import BlurOnRoundedIcon from '@mui/icons-material/BlurOnRounded';
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 
 import React, { useEffect, useState } from 'react';
 
@@ -63,6 +64,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
 
     // Input state
     const [multiInOne, setMultiInOne] = useState(false);
+    const [allowAv1, setAllowAv1] = useState(false);
     const [multiargs, setMultiargs] = useState<TranscodeInfo>({ sar_fix: "", video_br: 0, audio_br: 0 } as TranscodeInfo);
     const [extendInputInfo, setExtendInputInfo] = useState<string>(""); // -2 for none, >=0 for showing input info of taskInfo[extendInputInfo]
 
@@ -157,6 +159,9 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
         }
         else {
             for (let i = 0; i < taskInfo.length; i++) {
+                if (!allowAv1 && taskInfo[i].input.codec === "av1") {
+                    continue;
+                }
                 const newTask: TaskInfo = {
                     uid: i === 0 ? org_task?.uid : undefined,
                     input: [taskInfo[i].input],
@@ -251,6 +256,15 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                         <ListItemText sx={{ color: (theme) => theme.vars?.palette.primary.main }} secondary={data.path.split("/").slice(-1)[0]}>
                             <b>File {index + 1}</b>
                         </ListItemText>
+                        {data.codec === "av1" && (
+                            <ListItemIcon>
+                                <Tooltip title="The original codec is AV1">
+                                    <IconButton>
+                                        <WarningAmberRoundedIcon color="warning" />
+                                    </IconButton>
+                                </Tooltip>
+                            </ListItemIcon>
+                        )}
                         <ListItemIcon>
                             {extendInputInfo === data.path ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
                         </ListItemIcon>
@@ -279,7 +293,6 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
             <DialogContent sx={{
                 display: "flex",
                 flexDirection: "row",
-                gap: 1,
                 p: 3,
             }}>
                 <Box sx={{
@@ -287,12 +300,6 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                     flexDirection: "column",
                     width: "38%",
                     height: "100%",
-                    overflowY: "auto",
-                    scrollbarWidth: 'none',     // Firefox
-                    msOverflowStyle: 'none',    // IE 10+
-                    '&::-webkit-scrollbar': {   // Chrome / Safari
-                        display: 'none',
-                    },
                 }}>
                     <Box sx={{
                         display: "flex",
@@ -302,64 +309,84 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                         <Typography variant="h6" fontWeight="bold">
                             Input Settings
                         </Typography>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <Box sx={{ display: "flex", alignItems: "center" }}>
+                            <Button onClick={() => setTaskInfo([])} sx={{ mr: 3 }}>
+                                Clear
+                            </Button>
+                            <Typography variant="body2" color="text.secondary">
+                                Allow AV1
+                            </Typography>
+                            <Switch checked={allowAv1} onChange={(_, checked) => setAllowAv1(checked)} sx={{ mr: 3 }} />
                             <Typography variant="body2" color="text.secondary">
                                 Multi-in-one
                             </Typography>
                             <Switch checked={multiInOne} onChange={(_, checked) => setMultiInOne(checked)} />
                         </Box>
                     </Box>
-                    <List>
-                        <DragDropProvider
-                            onDragEnd={(event) => {
-                                setTaskInfo((items) => move(items as any, event) as Taskls[]);
-                            }}
-                            onDragStart={() => { setExtendInputInfo("") }}
-                        >
-                            {taskInfo.map((task, index) => (
-                                <>
-                                    <SortableFileInput key={task.input.path} data={task.input} index={index} />
+                    <Box sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        width: "100%",
+                        height: "100%",
+                        overflowY: "auto",
+                        scrollbarWidth: 'none',     // Firefox
+                        msOverflowStyle: 'none',    // IE 10+
+                        '&::-webkit-scrollbar': {   // Chrome / Safari
+                            display: 'none',
+                        },
+                    }}>
+                        <List>
+                            <DragDropProvider
+                                onDragEnd={(event) => {
+                                    setTaskInfo((items) => move(items as any, event) as Taskls[]);
+                                }}
+                                onDragStart={() => { setExtendInputInfo("") }}
+                            >
+                                {taskInfo.filter((task) => allowAv1 || task.input.codec !== "av1").map((task, index) => (
+                                    <>
+                                        <SortableFileInput key={task.input.path} data={task.input} index={index} />
 
-                                    <Collapse in={extendInputInfo === task.input.path} timeout="auto" unmountOnExit>
-                                        <Divider sx={{ mb: 1 }} />
-                                        <FileInfoComponent fileInfo={[task.input]} />
-                                        <Divider sx={{ mt: 1 }} />
-                                    </Collapse>
-                                </>
-                            ))}
-                        </DragDropProvider>
-                        {(extendInputInfo !== "yyytttqqq") && (
-                            <ListItem disablePadding>
-                                <ListItemButton onClick={() => setExtendInputInfo("yyytttqqq")}>
-                                    <ListItemIcon>
-                                        <IconButton disableRipple>
-                                            <AddCircleRoundedIcon />
+                                        <Collapse in={extendInputInfo === task.input.path} timeout="auto" unmountOnExit>
+                                            <Divider sx={{ mb: 1 }} />
+                                            <FileInfoComponent fileInfo={[task.input]} />
+                                            <Divider sx={{ mt: 1 }} />
+                                        </Collapse>
+                                    </>
+                                ))}
+                            </DragDropProvider>
+                            {(extendInputInfo !== "yyytttqqq") && (
+                                <ListItem disablePadding>
+                                    <ListItemButton onClick={() => setExtendInputInfo("yyytttqqq")}>
+                                        <ListItemIcon>
+                                            <IconButton disableRipple>
+                                                <AddCircleRoundedIcon />
+                                            </IconButton>
+                                        </ListItemIcon>
+                                        <ListItemText primary="Add a video file or directory" />
+                                    </ListItemButton>
+                                </ListItem>
+                            )}
+                            {extendInputInfo === "yyytttqqq" && (
+                                <ListItem disablePadding>
+                                    <ListItemIcon sx={{ gap: 1, mr: 1 }}>
+                                        <IconButton onClick={() => setExtendInputInfo("")}>
+                                            <RemoveCircleRoundedIcon color="error" />
+                                        </IconButton>
+                                        <IconButton onClick={() => { handleInsert(tempPath); setExtendInputInfo(""); }}>
+                                            <CheckRoundedIcon color="success" />
                                         </IconButton>
                                     </ListItemIcon>
-                                    <ListItemText primary="Add a video file or directory" />
-                                </ListItemButton>
-                            </ListItem>
-                        )}
-                        {extendInputInfo === "yyytttqqq" && (
-                            <ListItem disablePadding>
-                                <ListItemIcon sx={{ gap: 1, mr: 1 }}>
-                                    <IconButton onClick={() => setExtendInputInfo("")}>
-                                        <RemoveCircleRoundedIcon color="error" />
-                                    </IconButton>
-                                    <IconButton onClick={() => { handleInsert(tempPath); setExtendInputInfo(""); }}>
-                                        <CheckRoundedIcon color="success" />
-                                    </IconButton>
-                                </ListItemIcon>
-                                <ListItemText sx={{ pr: 1 }}>
-                                    <PathSelector
-                                        label="Path"
-                                        onClose={(path) => setTempPath(path)}
-                                        org={tempPath.endsWith("/") ? tempPath : tempPath.split("/").slice(0, -1).join("/") + "/"}
-                                    />
-                                </ListItemText>
-                            </ListItem>
-                        )}
-                    </List>
+                                    <ListItemText sx={{ pr: 1 }}>
+                                        <PathSelector
+                                            label="Path"
+                                            onClose={(path) => setTempPath(path)}
+                                            org={tempPath.endsWith("/") ? tempPath : tempPath.split("/").slice(0, -1).join("/") + "/"}
+                                        />
+                                    </ListItemText>
+                                </ListItem>
+                            )}
+                        </List>
+                    </Box>
                 </Box>
                 <Divider orientation="vertical" flexItem />
                 <Box sx={{
@@ -367,13 +394,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                     flexDirection: "column",
                     width: "38%",
                     height: "100%",
-                    overflowY: "auto",
-                    scrollbarWidth: 'none',     // Firefox
-                    msOverflowStyle: 'none',    // IE 10+
-                    '&::-webkit-scrollbar': {   // Chrome / Safari
-                        display: 'none',
-                    },
-                    pl: 1,
+                    px: 1,
                     gap: 3,
                 }}>
                     <Typography variant="h6" fontWeight="bold">
@@ -393,49 +414,62 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                         />
                     </Box>
                     <Divider />
-                    {!multiInOne && taskInfo.map((task, index) => (
-                        <Box key={index} sx={{
-                            display: "flex",
-                            flexDirection: "column",
-                            justifyContent: "start",
-                            alignItems: "start",
-                            gap: 1,
-                        }}>
-                            <Typography variant="body1" fontWeight="bold" color="primary">
-                                File {index + 1}
-                            </Typography>
-                            {[
-                                ["Output Path", `${outputDir}${getFileStat(task.input.path)}.mp4`],
-                                ["Video Bitrate", `${(Math.min(task.trans.video_br / 1000 / 1000, settingsInfo.max_bitrate_mb)).toFixed(2)} Mbps`],
-                                ["Audio Bitrate", `${(task.trans.audio_br / 1000).toFixed(2)} kbps`],
-                            ].map(([key, value]) => (
-                                <Typography key={key} variant="body2" sx={{ pl: 2 }}>
-                                    <b>{key}:</b> {value}
-                                </Typography>
-                            ))}
-                        </Box>
-                    ))}
-                    {multiInOne && (<Box sx={{
+                    <Box sx={{
                         display: "flex",
                         flexDirection: "column",
-                        justifyContent: "start",
-                        alignItems: "start",
-                        gap: 1,
+                        width: "100%",
+                        height: "100%",
+                        overflowY: "auto",
+                        scrollbarWidth: 'none',     // Firefox
+                        msOverflowStyle: 'none',    // IE 10+
+                        '&::-webkit-scrollbar': {   // Chrome / Safari
+                            display: 'none',
+                        },
                     }}>
-                        <Typography variant="body1" fontWeight="bold" color="primary">
-                            File
-                        </Typography>
-                        {[
-                            ["Output Path", `${outputDir}${getFileStat(taskInfo[0]?.input.path)}.mp4`],
-                            ["Video Bitrate", `${(Math.min(multiargs.video_br / 1000 / 1000, settingsInfo.max_bitrate_mb)).toFixed(2)} Mbps`],
-                            ["Audio Bitrate", `${(multiargs.audio_br / 1000).toFixed(2)} kbps`],
-                        ].map(([key, value]) => (
-                            <Typography key={key} variant="body2" sx={{ pl: 2 }}>
-                                <b>{key}:</b> {value}
-                            </Typography>
-                        ))}
-                    </Box>)
-                    }
+                        {multiInOne
+                            ? <Box sx={{
+                                display: "flex",
+                                flexDirection: "column",
+                                justifyContent: "start",
+                                alignItems: "start",
+                                gap: 1,
+                            }}>
+                                <Typography variant="body1" fontWeight="bold" color="primary">
+                                    File
+                                </Typography>
+                                {[
+                                    ["Output Path", `${outputDir}${getFileStat(taskInfo[0]?.input.path)}.mp4`],
+                                    ["Video Bitrate", `${(Math.min(multiargs.video_br / 1000 / 1000, settingsInfo.max_bitrate_mb)).toFixed(2)} Mbps`],
+                                    ["Audio Bitrate", `${(multiargs.audio_br / 1000).toFixed(2)} kbps`],
+                                ].map(([key, value]) => (
+                                    <Typography key={key} variant="body2" sx={{ pl: 2 }}>
+                                        <b>{key}:</b> {value}
+                                    </Typography>
+                                ))}
+                            </Box>
+                            : taskInfo.filter((task) => allowAv1 || task.input.codec !== "av1").map((task, index) => (
+                                <Box key={index} sx={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    justifyContent: "start",
+                                    alignItems: "start",
+                                    gap: 1,
+                                }}>
+                                    <Typography variant="body1" fontWeight="bold" color="primary">
+                                        File {index + 1}
+                                    </Typography>
+                                    {[
+                                        ["Output Path", `${outputDir}${getFileStat(task.input.path)}.mp4`],
+                                        ["Video Bitrate", `${(Math.min(task.trans.video_br / 1000 / 1000, settingsInfo.max_bitrate_mb)).toFixed(2)} Mbps`],
+                                        ["Audio Bitrate", `${(task.trans.audio_br / 1000).toFixed(2)} kbps`],
+                                    ].map(([key, value]) => (
+                                        <Typography key={key} variant="body2" sx={{ pl: 2 }}>
+                                            <b>{key}:</b> {value}
+                                        </Typography>
+                                    ))}
+                                </Box>
+                            ))}
+                    </Box>
                 </Box>
                 <Divider orientation="vertical" flexItem />
                 <Box sx={{
@@ -443,12 +477,6 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                     flexDirection: "column",
                     width: "24%",
                     height: "100%",
-                    overflowY: "auto",
-                    scrollbarWidth: 'none',     // Firefox
-                    msOverflowStyle: 'none',    // IE 10+
-                    '&::-webkit-scrollbar': {   // Chrome / Safari
-                        display: 'none',
-                    },
                     pl: 1,
                     gap: 3,
                 }}>
@@ -469,245 +497,261 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                             Reset
                         </Button>
                     </Box>
-                    {(([
-                        ["Overwrite", "Overwrite the output file if it already exists.",
-                            (s: Settings) =>
-                                <Switch
-                                    checked={s.overwrite}
-                                    onChange={(e) => { setSettingsInfo({ ...s, overwrite: e.target.checked }) }}
-                                />
-                        ],
-                        ["Delete Source File", "Delete the source file after successful processing.",
-                            (s: Settings) =>
-                                <Switch
-                                    checked={s.delete_source}
-                                    onChange={(e) => setSettingsInfo({ ...s, delete_source: e.target.checked })}
-                                />
-                        ],
-                        ["Rotate", "Rotate the video.",
-                            (s: Settings) =>
-                                <Select
-                                    value={s.rotate ?? -1}
-                                    onChange={(e) => setSettingsInfo({ ...s, rotate: e.target.value === -1 ? null : e.target.value as number })}
-                                    displayEmpty
-                                    sx={{ width: "100%", ml: 1 }}
-                                >
-                                    <MenuItem value={-1}>None</MenuItem>
-                                    {Rotate.map((option, index) => (
-                                        <MenuItem key={option} value={index}>
-                                            {option}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                        ],
-                    ]) as [string, string, (s: Settings) => React.ReactNode][]).map(([title, description, component]) => (
-
-                        <Box key={title} sx={{
-                            display: "flex",
-                            width: "100%",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                        }}>
-                            <Tooltip title={description} placement="bottom-start">
-                                <Typography variant="body1" fontWeight="bold">
-                                    {title}
-                                </Typography>
-                            </Tooltip>
-                            {component(settingsInfo)}
-                        </Box>
-                    ))}
-                    {([
-                        ["Retry", "Number of times to retry if the task failed.",
-                            (s: Settings) =>
-                                <Box sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    width: "100%",
-                                    justifyContent: "space-between",
-                                }}>
-                                    <Slider
-                                        value={s.retry}
-                                        onChange={(e, value) => setSettingsInfo({ ...s, retry: value as number })}
-                                        min={0}
-                                        max={8}
-                                        step={1}
-                                        valueLabelDisplay="auto"
-                                        sx={{ width: "68%" }}
-                                    />
-                                    <Typography variant="body2" color="text.secondary">
-                                        {s.retry}
-                                    </Typography>
-                                </Box>
-                        ],
-                        ["Max Bitrate", "Limit the maximum bitrate for video encoding when the calculated bitrate exceeds.",
-                            (s: Settings) =>
-                                <Box sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    width: "100%",
-                                    justifyContent: "space-between",
-                                }}>
-                                    <Slider
-                                        value={s.max_bitrate_mb}
-                                        onChange={(e, value) => setSettingsInfo({ ...s, max_bitrate_mb: value as number })}
-                                        min={8}
-                                        max={888}
-                                        step={0.1}
-                                        valueLabelDisplay="auto"
-                                        sx={{ width: "68%" }}
-                                    />
-                                    <Typography variant="body2" color="text.secondary">
-                                        {s.max_bitrate_mb} Mbps
-                                    </Typography>
-                                </Box>
-                        ]
-                    ] as [string, string, (s: Settings) => React.ReactNode][]).map(([title, description, component]) => (
-                        <Box sx={{
-                            display: "flex",
-                            flexDirection: "column",
-                            width: "100%",
-                            alignItems: "flex-start",
-                        }}>
-                            <Tooltip title={description} placement="right">
-                                <Typography variant="body1" fontWeight="bold">
-                                    {title}
-                                </Typography>
-                            </Tooltip>
-                            {component(settingsInfo)}
-                        </Box>
-                    ))}
                     <Box sx={{
                         display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
+                        flexDirection: "column",
                         width: "100%",
+                        height: "100%",
+                        overflowY: "auto",
+                        scrollbarWidth: 'none',     // Firefox
+                        msOverflowStyle: 'none',    // IE 10+
+                        '&::-webkit-scrollbar': {   // Chrome / Safari
+                            display: 'none',
+                        },
+                        gap: 3,
                     }}>
-                        <Typography variant="h6" fontWeight="bold">
-                            SVT-AV1 Settings
-                        </Typography>
-                        <IconButton onClick={() => setExpanded(!expanded)}>
-                            {expanded ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
-                        </IconButton>
-                    </Box>
-                    <Collapse in={expanded} timeout="auto" unmountOnExit sx={{ width: "100%" }}>
-                        {([
-                            ["preset", "The preset of the SVT-AV1 encoder.",
+                        {(([
+                            ["Overwrite", "Overwrite the output file if it already exists.",
                                 (s: Settings) =>
-                                    <Slider
-                                        value={s.preset}
-                                        onChange={(e, value) => setSettingsInfo({ ...s, preset: value as number })}
-                                        min={1}
-                                        max={12}
-                                        step={1}
-                                        valueLabelDisplay="auto"
-                                        sx={{ width: "88%" }}
+                                    <Switch
+                                        checked={s.overwrite}
+                                        onChange={(e) => { setSettingsInfo({ ...s, overwrite: e.target.checked }) }}
                                     />
                             ],
-                            ["overshoot_pct", "How much the encoder is allowed to overshoot the target bitrate.",
+                            ["Delete Source File", "Delete the source file after successful processing.",
                                 (s: Settings) =>
-                                    <Slider
-                                        value={s.overshoot_pct}
-                                        onChange={(e, value) => setSettingsInfo({ ...s, overshoot_pct: value as number })}
-                                        min={0}
-                                        max={100}
-                                        step={1}
-                                        valueLabelDisplay="auto"
-                                        sx={{ width: "88%" }}
+                                    <Switch
+                                        checked={s.delete_source}
+                                        onChange={(e) => setSettingsInfo({ ...s, delete_source: e.target.checked })}
                                     />
                             ],
-                            ["undershoot_pct", "How much the encoder is allowed to undershoot the target bitrate.",
+                            ["Rotate", "Rotate the video.",
                                 (s: Settings) =>
-                                    <Slider
-                                        value={s.undershoot_pct}
-                                        onChange={(e, value) => setSettingsInfo({ ...s, undershoot_pct: value as number })}
-                                        min={0}
-                                        max={100}
-                                        step={1}
-                                        valueLabelDisplay="auto"
-                                        sx={{ width: "88%" }}
-                                    />
+                                    <Select
+                                        value={s.rotate ?? -1}
+                                        onChange={(e) => setSettingsInfo({ ...s, rotate: e.target.value === -1 ? null : e.target.value as number })}
+                                        displayEmpty
+                                        sx={{ width: "100%", ml: 1 }}
+                                    >
+                                        <MenuItem value={-1}>None</MenuItem>
+                                        {Rotate.map((option, index) => (
+                                            <MenuItem key={option} value={index}>
+                                                {option}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
                             ],
-                            ["minsection_pct", "Minimum percentage of the section that must be used.",
-                                (s: Settings) =>
-                                    <Slider
-                                        value={s.minsection_pct}
-                                        onChange={(e, value) => setSettingsInfo({ ...s, minsection_pct: value as number })}
-                                        min={0}
-                                        max={100}
-                                        step={1}
-                                        valueLabelDisplay="auto"
-                                        sx={{ width: 288 }}
-                                    />
-                            ],
-                            ["maxsection_pct", "Maximum percentage of the section that can be used.",
-                                (s: Settings) =>
-                                    <Slider
-                                        value={s.maxsection_pct}
-                                        onChange={(e, value) => setSettingsInfo({ ...s, maxsection_pct: value as number })}
-                                        min={0}
-                                        max={10000}
-                                        step={100}
-                                        valueLabelDisplay="auto"
-                                        sx={{ width: "88%" }}
-                                    />
-                            ],
-                            ["keyint", "Maximum interval between keyframes in seconds.",
-                                (s: Settings) =>
-                                    <Slider
-                                        value={Number(s.keyint.split('s')[0])}
-                                        onChange={(e, value) => setSettingsInfo({ ...s, keyint: `${value}s` })}
-                                        min={1}
-                                        max={100}
-                                        step={1}
-                                        valueLabelDisplay="auto"
-                                        sx={{ width: "88%" }}
-                                    />
-                            ],
-                            ["lookahead", "Number of frames to look ahead for better encoding decisions.",
-                                (s: Settings) =>
-                                    <Slider
-                                        value={s.lookahead}
-                                        onChange={(e, value) => setSettingsInfo({ ...s, lookahead: value as number })}
-                                        min={1}
-                                        max={120}
-                                        step={1}
-                                        valueLabelDisplay="auto"
-                                        sx={{ width: "88%" }}
-                                    />
-                            ],
-                        ] as [string, string, (s: Settings) => React.ReactNode][]).map(([title, description, component]) => (
+                        ]) as [string, string, (s: Settings) => React.ReactNode][]).map(([title, description, component]) => (
+
                             <Box key={title} sx={{
+                                display: "flex",
+                                width: "100%",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                            }}>
+                                <Tooltip title={description} placement="bottom-start">
+                                    <Typography variant="body1" fontWeight="bold">
+                                        {title}
+                                    </Typography>
+                                </Tooltip>
+                                {component(settingsInfo)}
+                            </Box>
+                        ))}
+                        {([
+                            ["Retry", "Number of times to retry if the task failed.",
+                                (s: Settings) =>
+                                    <Box sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        width: "100%",
+                                        justifyContent: "space-between",
+                                    }}>
+                                        <Slider
+                                            value={s.retry}
+                                            onChange={(e, value) => setSettingsInfo({ ...s, retry: value as number })}
+                                            min={0}
+                                            max={8}
+                                            step={1}
+                                            valueLabelDisplay="auto"
+                                            sx={{ width: "68%" }}
+                                        />
+                                        <Typography variant="body2" color="text.secondary">
+                                            {s.retry}
+                                        </Typography>
+                                    </Box>
+                            ],
+                            ["Max Bitrate", "Limit the maximum bitrate for video encoding when the calculated bitrate exceeds.",
+                                (s: Settings) =>
+                                    <Box sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        width: "100%",
+                                        justifyContent: "space-between",
+                                    }}>
+                                        <Slider
+                                            value={s.max_bitrate_mb}
+                                            onChange={(e, value) => setSettingsInfo({ ...s, max_bitrate_mb: value as number })}
+                                            min={8}
+                                            max={888}
+                                            step={0.1}
+                                            valueLabelDisplay="auto"
+                                            sx={{ width: "68%" }}
+                                        />
+                                        <Typography variant="body2" color="text.secondary">
+                                            {s.max_bitrate_mb} Mbps
+                                        </Typography>
+                                    </Box>
+                            ]
+                        ] as [string, string, (s: Settings) => React.ReactNode][]).map(([title, description, component]) => (
+                            <Box sx={{
                                 display: "flex",
                                 flexDirection: "column",
                                 width: "100%",
                                 alignItems: "flex-start",
                             }}>
                                 <Tooltip title={description} placement="right">
-                                    <Typography variant="body1">
-                                        <b>{title}:</b> {settingsInfo[title as keyof Settings]}
+                                    <Typography variant="body1" fontWeight="bold">
+                                        {title}
                                     </Typography>
                                 </Tooltip>
                                 {component(settingsInfo)}
                             </Box>
-                        ))
-                        }
+                        ))}
                         <Box sx={{
                             display: "flex",
-                            width: "100%",
-                            alignItems: "center",
                             justifyContent: "space-between",
+                            alignItems: "center",
+                            width: "100%",
                         }}>
-                            <Tooltip title={"Scene change detection."} placement="bottom-start">
-                                <Typography variant="body1" fontWeight="bold">
-                                    scd
-                                </Typography>
-                            </Tooltip>
-                            <Switch
-                                checked={settingsInfo.scd}
-                                onChange={(e) => setSettingsInfo({ ...settingsInfo, scd: e.target.checked })}
-                            />
+                            <Typography variant="h6" fontWeight="bold">
+                                SVT-AV1 Settings
+                            </Typography>
+                            <IconButton onClick={() => setExpanded(!expanded)}>
+                                {expanded ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+                            </IconButton>
                         </Box>
-                    </Collapse>
+                        <Collapse in={expanded} timeout="auto" unmountOnExit>
+                            <Box sx={{ display: "flex", flexDirection: "column", width: "100%", gap: 3 }}>
+                                {([
+                                    ["preset", "The preset of the SVT-AV1 encoder.",
+                                        (s: Settings) =>
+                                            <Slider
+                                                value={s.preset}
+                                                onChange={(e, value) => setSettingsInfo({ ...s, preset: value as number })}
+                                                min={1}
+                                                max={12}
+                                                step={1}
+                                                valueLabelDisplay="auto"
+                                                sx={{ width: "88%" }}
+                                            />
+                                    ],
+                                    ["overshoot_pct", "How much the encoder is allowed to overshoot the target bitrate.",
+                                        (s: Settings) =>
+                                            <Slider
+                                                value={s.overshoot_pct}
+                                                onChange={(e, value) => setSettingsInfo({ ...s, overshoot_pct: value as number })}
+                                                min={0}
+                                                max={100}
+                                                step={1}
+                                                valueLabelDisplay="auto"
+                                                sx={{ width: "88%" }}
+                                            />
+                                    ],
+                                    ["undershoot_pct", "How much the encoder is allowed to undershoot the target bitrate.",
+                                        (s: Settings) =>
+                                            <Slider
+                                                value={s.undershoot_pct}
+                                                onChange={(e, value) => setSettingsInfo({ ...s, undershoot_pct: value as number })}
+                                                min={0}
+                                                max={100}
+                                                step={1}
+                                                valueLabelDisplay="auto"
+                                                sx={{ width: "88%" }}
+                                            />
+                                    ],
+                                    ["minsection_pct", "Minimum percentage of the section that must be used.",
+                                        (s: Settings) =>
+                                            <Slider
+                                                value={s.minsection_pct}
+                                                onChange={(e, value) => setSettingsInfo({ ...s, minsection_pct: value as number })}
+                                                min={0}
+                                                max={100}
+                                                step={1}
+                                                valueLabelDisplay="auto"
+                                                sx={{ width: 288 }}
+                                            />
+                                    ],
+                                    ["maxsection_pct", "Maximum percentage of the section that can be used.",
+                                        (s: Settings) =>
+                                            <Slider
+                                                value={s.maxsection_pct}
+                                                onChange={(e, value) => setSettingsInfo({ ...s, maxsection_pct: value as number })}
+                                                min={0}
+                                                max={10000}
+                                                step={100}
+                                                valueLabelDisplay="auto"
+                                                sx={{ width: "88%" }}
+                                            />
+                                    ],
+                                    ["keyint", "Maximum interval between keyframes in seconds.",
+                                        (s: Settings) =>
+                                            <Slider
+                                                value={Number(s.keyint.split('s')[0])}
+                                                onChange={(e, value) => setSettingsInfo({ ...s, keyint: `${value}s` })}
+                                                min={1}
+                                                max={100}
+                                                step={1}
+                                                valueLabelDisplay="auto"
+                                                sx={{ width: "88%" }}
+                                            />
+                                    ],
+                                    ["lookahead", "Number of frames to look ahead for better encoding decisions.",
+                                        (s: Settings) =>
+                                            <Slider
+                                                value={s.lookahead}
+                                                onChange={(e, value) => setSettingsInfo({ ...s, lookahead: value as number })}
+                                                min={1}
+                                                max={120}
+                                                step={1}
+                                                valueLabelDisplay="auto"
+                                                sx={{ width: "88%" }}
+                                            />
+                                    ],
+                                ] as [string, string, (s: Settings) => React.ReactNode][]).map(([title, description, component]) => (
+                                    <Box key={title} sx={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        width: "100%",
+                                        alignItems: "flex-start",
+                                    }}>
+                                        <Tooltip title={description} placement="right">
+                                            <Typography variant="body1">
+                                                <b>{title}:</b> {settingsInfo[title as keyof Settings]}
+                                            </Typography>
+                                        </Tooltip>
+                                        {component(settingsInfo)}
+                                    </Box>
+                                ))
+                                }
+                                <Box sx={{
+                                    display: "flex",
+                                    width: "100%",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                }}>
+                                    <Tooltip title={"Scene change detection."} placement="bottom-start">
+                                        <Typography variant="body1" fontWeight="bold">
+                                            scd
+                                        </Typography>
+                                    </Tooltip>
+                                    <Switch
+                                        checked={settingsInfo.scd}
+                                        onChange={(e) => setSettingsInfo({ ...settingsInfo, scd: e.target.checked })}
+                                    />
+                                </Box>
+                            </Box>
+                        </Collapse>
+                    </Box>
                 </Box>
 
             </DialogContent>

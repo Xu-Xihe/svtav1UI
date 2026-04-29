@@ -80,7 +80,7 @@ export default function Waiting() {
             height: "100%",
         }}>
             <TableContainer component={Box}>
-                <Table sx={{ width: "100%" }}>
+                <Table sx={{ width: "100%" }} stickyHeader>
                     <TableHead>
                         <TableRow>
                             <TableCell sx={{ minwidth: 18 }}>UID</TableCell>

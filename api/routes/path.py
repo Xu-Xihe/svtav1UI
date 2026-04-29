@@ -3,7 +3,7 @@ from pathlib import Path
 from pypinyin import lazy_pinyin
 from natsort import natsorted
 
-from src.models import ApiPathls
+from src.models import ApiPathls, FileSuffixs
 
 path_router = APIRouter(prefix="/path", tags=["path"])
 
@@ -25,17 +25,7 @@ async def list_directory(
         if p.is_dir():
             dir.append(p.name)
         else:
-            if p.suffix.lower() in [
-                ".mp4",
-                ".mkv",
-                ".avi",
-                ".mov",
-                ".flv",
-                ".wmv",
-                ".ts",
-                ".f4v",
-                ".m4v",
-            ]:
+            if p.suffix.lower() in FileSuffixs:
                 file.append(p.name)
     return ApiPathls(
         dir=natsorted(dir, key=lambda x: lazy_pinyin(x)),

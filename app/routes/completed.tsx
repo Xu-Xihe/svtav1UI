@@ -81,7 +81,7 @@ export default function Completed() {
             height: "100%",
         }}>
             <TableContainer component={Box}>
-                <Table sx={{ width: "100%" }}>
+                <Table sx={{ width: "100%" }} stickyHeader>
                     <TableHead>
                         <TableRow>
                             <TableCell>Input</TableCell>

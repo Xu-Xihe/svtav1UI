@@ -51,6 +51,13 @@ export default function AppBarComponent() {
                 setApiConnect(false);
                 setOpen(false);
             }
+            try {
+                const res = await api.get(`${apiUrl}/task/status`).json<boolean>();
+                setStatus(res);
+            }
+            catch (err) {
+                pushError(err, "Fetch task status");
+            }
             return null;
         },
         retry: 0,
@@ -86,25 +93,6 @@ export default function AppBarComponent() {
         setMode(themeMode);
     }, [themeMode]);
 
-    useEffect(() => {
-        api.get(`${apiUrl}/task/status`, { searchParams: { set: !status } }).json<boolean>()
-            .then((data) => {
-                setStatus(data);
-            })
-            .catch((error) => {
-                pushError(error, "Get task status");
-            });
-    }, []);
-
-    useEffect(() => {
-        api.get(`${apiUrl}/task/status`).json<boolean>()
-            .then((data: boolean) => {
-                setStatus(data);
-            })
-            .catch((error) => {
-                pushError(error, "Get task status");
-            });
-    }, []);
 
     return (
         <>

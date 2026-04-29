@@ -5,50 +5,54 @@ from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
+
+FileSuffixs = [
+    ".mp4",
+    ".mkv",
+    ".avi",
+    ".mov",
+    ".flv",
+    ".wmv",
+    ".ts",
+    ".f4v",
+    ".m4v",
+    ".mpg",
+    ".mpeg",
+    ".vob",
+    ".webm",
+    ".m2ts",
+    ".3gp",
+]
 
 
-# Enum
-class CodecInfo(BaseModel):
-    name: str
-    scale: float
-
-
-class CodecScale(float, Enum):
-    av1 = 1.0
-    hevc = 0.8
-    h264 = 0.65
-    mpeg4 = 0.5
-    vp9 = 0.85
-    vc1 = 0.5
-    wmv3 = 0.35
-    wmv1 = 0.15
-    mpeg1 = 0.15
-    mp4v = 0.15
-    prores = 0.3
-    flv1 = 0.4
-
-
-class Codec(str, Enum):
-    av1 = "av1"
-    hevc = "hevc"
-    h264 = "h264"
-    mpeg4 = "mpeg4"
-    vp9 = "vp9"
-    vc1 = "vc1"
-    wmv3 = "wmv3"
-    wmv1 = "wmv1"
-    mpeg1 = "mpeg1video"
-    mp4v = "mp4v"
-    prores = "prores"
-    flv1 = "flv1"
+Codec = {
+    "av1": 1.0,
+    "vp9": 0.85,
+    "hevc": 0.8,
+    "h265": 0.8,
+    "hev1": 0.8,
+    "h264": 0.65,
+    "avc1": 0.65,
+    "mpeg4": 0.5,
+    "vc1": 0.5,
+    "flv1": 0.4,
+    "flv": 0.4,
+    "mpeg2video": 0.35,
+    "mpeg2": 0.35,
+    "wmv3": 0.35,
+    "prores": 0.3,
+    "wmv1": 0.15,
+    "mpeg1video": 0.15,
+    "mp4v": 0.15,
+}
 
 
 # Base Models
 class FileInfo(BaseModel):
     path: Path
     size: int
-    codec: Codec
+    codec: str
     width: int
     height: int
     sar: str

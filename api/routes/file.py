@@ -5,7 +5,7 @@ import shlex
 from fastapi import APIRouter, HTTPException, Query
 from pathlib import Path
 
-from src.models import FileInfo, TranscodeInfo, Codec, CodecScale
+from src.models import FileInfo, TranscodeInfo, Codec
 
 
 class FileOprations:
@@ -56,13 +56,13 @@ class FileOprations:
         ):
             raise ValueError("Missing required video information.")
 
-        if video["codec_name"] not in Codec.__members__:
+        if Codec.get(video["codec_name"]) is None:
             raise ValueError(f"Unsupported codec: {video['codec_name']}")
 
         return FileInfo(
             path=path,
             size=path.stat().st_size,
-            codec=Codec[video["codec_name"]],
+            codec=video["codec_name"],
             width=int(video.get("width", 0)),
             height=int(video.get("height", 0)),
             sar=video.get("sample_aspect_ratio", "N/A"),
@@ -90,7 +90,7 @@ class FileOprations:
         v_br = org.bit_rate if abs(org.bit_rate - avg_br) / avg_br <= 0.13 else avg_br
 
         return TranscodeInfo(
-            video_br=round(v_br * CodecScale[org.codec.value].value),
+            video_br=round(v_br * Codec[org.codec]),
             audio_br=org.audio_bit_rate,
             sar_fix=FileOprations.check_sar(org.sar),
         )
@@ -123,7 +123,7 @@ class FileOprations:
         v_br = max_br if abs(max_br - avg_br) / avg_br <= 0.15 else avg_br
 
         return TranscodeInfo(
-            video_br=round(v_br * CodecScale[infos[0].codec.value].value),
+            video_br=round(v_br * Codec[infos[0].codec]),
             audio_br=max(f.audio_bit_rate for f in infos),
             sar_fix=FileOprations.check_sar(infos[0].sar),
         )
