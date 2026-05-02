@@ -90,7 +90,11 @@ class Database:
             cls._cursor = None
 
     @classmethod
-    async def insert_task(cls, task: ApiWaiting | TaskInfo) -> None:
+    async def insert_task(
+        cls,
+        task: ApiWaiting | TaskInfo,
+        priority: bool = False,
+    ) -> None:
         if not all(f.path.is_file() for f in task.input):
             raise Exception("Input file not found.")
 
@@ -98,7 +102,11 @@ class Database:
             task.output = task.output / f"{task.input[0].path.stem}.mp4"
 
         await cls.execute(
-            f"INSERT INTO waiting ({'uid,' if task.uid else ''}input, output, args, settings, has_retry, error) VALUES ({str(task.uid) + ',' if task.uid else ''}?, ?, ?, ?, ?, ?);",
+            f"""
+                INSERT INTO waiting
+                ({'uid,' if task.uid or priority else ''}input, output, args, settings, has_retry, error)
+                VALUES ({str(task.uid) + ',' if task.uid else 'COALESCE((SELECT MIN(uid) - 1 FROM waiting), 1),' if priority else ''}?, ?, ?, ?, ?, ?);
+            """,
             json.dumps(
                 [f.model_dump(mode="json") for f in task.input], ensure_ascii=False
             ),

@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pathlib import Path
 
 from src.models import FileInfo, TranscodeInfo, Codec
+from src.logger import Lg
 
 
 class FileOprations:
@@ -33,7 +34,8 @@ class FileOprations:
             str(path.resolve()),
         ]
 
-        print(" ".join(shlex.quote(arg) for arg in cmd))
+        Lg.info(f"Fetching file info: {path.resolve()}")
+        Lg.debug(f"Running command: {" ".join(shlex.quote(arg) for arg in cmd)}\n\n")
 
         proc = await asyncio.create_subprocess_exec(
             *cmd,

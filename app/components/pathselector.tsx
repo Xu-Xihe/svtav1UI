@@ -26,7 +26,7 @@ export interface PathInfo {
 }
 
 
-export default function PathSelector({ label, onClose, type, org, addDir }: { label: string; onClose: (path: string) => void; type?: string; org?: string; addDir?: boolean }) {
+export default function PathSelector({ label, onClose, onEnter = () => { }, type, org, addDir }: { label: string; onClose: (path: string) => void; onEnter?: (path: string) => void; type?: string; org?: string; addDir?: boolean }) {
     const apiUrl = getLocalStorage("apiUrl", "local");
     const { pushMsg, pushError } = useErrorMsg();
 
@@ -62,14 +62,14 @@ export default function PathSelector({ label, onClose, type, org, addDir }: { la
         return path.split('/').slice(0, -1).join('/') + "/" || "/";
     };
 
-    const close_check = async () => {
+    const close_check = async (key: boolean) => {
         try {
             await api.get(`${apiUrl}/path/ls?path_str=${path}`).json<PathInfo>()
 
             if (type) {
                 if (path.split("/").slice(-1)[0].includes(".")) {
                     if (type === "file") {
-                        onClose(path);
+                        key ? onEnter(path) : onClose(path);
                     }
                     else {
                         pushMsg("Now it is a file. Please select a directory", "error");
@@ -81,12 +81,12 @@ export default function PathSelector({ label, onClose, type, org, addDir }: { la
                         pushMsg("Now it is a directory. Please select a file", "error");
                     }
                     else {
-                        onClose(path);
+                        key ? onEnter(path) : onClose(path);
                     }
                 }
             }
             else {
-                onClose(path);
+                key ? onEnter(path) : onClose(path);
             }
         }
         catch (error) {
@@ -97,7 +97,24 @@ export default function PathSelector({ label, onClose, type, org, addDir }: { la
 
     return (
         <>
-            <Dialog open={openNewFolder !== ""} onClose={() => setOpenNewFolder("")} fullWidth>
+            <Dialog
+                fullWidth
+                open={openNewFolder !== ""}
+                onClose={() => setOpenNewFolder("")}
+                onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setOpenNewFolder("");
+                    }
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        makeDir();
+                        onClose(path + openNewFolder + "/");
+                    }
+                }}
+            >
                 <DialogTitle>
                     <Typography variant="h6" fontWeight="bold">
                         Create New Folder
@@ -145,7 +162,14 @@ export default function PathSelector({ label, onClose, type, org, addDir }: { la
                     disablePortal
                     value={path}
                     onOpen={() => fetchFileList(path)}
-                    onClose={() => close_check()}
+                    onClose={() => close_check(false)}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            close_check(true);
+                        }
+                    }}
                     options={[
                         ...pathList.dir
                             .filter((dir) => dir.startsWith(path.slice(path.lastIndexOf("/") + 1)))

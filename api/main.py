@@ -13,20 +13,29 @@ from routes.path import path_router
 from routes.file import file_router
 from routes.settings import settings_router, SettingsManager
 from src.database import Database
+from src.logger import Lg
 
 
 class IgnoreHealthFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
-        msg = record.getMessage()
-        if "/health" in msg or "/task/running" in msg:
-            return False
-        return True
+        # msg = record.getMessage()
+        # if any(
+        #    path in msg
+        #    for path in [
+        #        "/health",
+        #        "/task",
+        #        "/path/ls",
+        #    ]
+        # ):
+        #    return False
+        return False
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await Database.init()
     await SettingsManager.init()
+    Lg.init()
     logger = logging.getLogger("uvicorn.access")
     logger.addFilter(IgnoreHealthFilter())
     queue = asyncio.create_task(TaskOprations.init())

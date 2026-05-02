@@ -9,16 +9,19 @@ import {
     TableRow,
     Collapse,
     Button,
+    IconButton,
+    Tooltip,
+    Switch,
 } from '@mui/material';
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
+import VerticalAlignTopRoundedIcon from '@mui/icons-material/VerticalAlignTopRounded';
 
-import { useEffect, useState } from 'react';
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import { useErrorMsg } from "../components/error_popout";
-import { getLocalStorage } from "../hooks/storage";
+import useLocalStorage, { getLocalStorage } from "../hooks/storage";
 import { FileInfoComponent, TaskInfoComponent } from "../components/info";
 import { api } from "../hooks/api";
 import type { TaskInfo } from "../hooks/model";
@@ -31,6 +34,8 @@ interface ApiWaiting extends TaskInfo {
 export default function Waiting() {
     const apiUrl = getLocalStorage("apiUrl", "local");
     const { pushMsg, pushError } = useErrorMsg();
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const [scrollTop, setScrollTop] = useLocalStorage("scrollTop", true, "local");
 
     const [waitingInfo, setWaitingInfo] = useState<ApiWaiting[]>([]);
     const [taskSelected, setTaskSelected] = useState<number>(-1);
@@ -52,8 +57,7 @@ export default function Waiting() {
 
     useEffect(() => {
         fetchls();
-    }, [])
-
+    }, []);
 
 
     if (waitingInfo.length === 0) {
@@ -79,7 +83,7 @@ export default function Waiting() {
             width: "100%",
             height: "100%",
         }}>
-            <TableContainer component={Box}>
+            <TableContainer component={Box} ref={containerRef}>
                 <Table sx={{ width: "100%" }} stickyHeader>
                     <TableHead>
                         <TableRow>
@@ -87,7 +91,11 @@ export default function Waiting() {
                             <TableCell>Input</TableCell>
                             <TableCell>Output</TableCell>
                             <TableCell sx={{ minwidth: 8 }}>Retry</TableCell>
-                            <TableCell sx={{ minwidth: 8 }}></TableCell>
+                            <TableCell sx={{ minwidth: 8 }}>
+                                <Tooltip title="Auto scroll to top when move task to top." placement="top" arrow>
+                                    <Switch checked={scrollTop} onChange={(_, v) => setScrollTop(v)} />
+                                </Tooltip>
+                            </TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -102,7 +110,37 @@ export default function Waiting() {
                                     <TableCell>{task.output}</TableCell>
                                     <TableCell>{task.has_retry}</TableCell>
                                     <TableCell>
-                                        {taskSelected === index ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+                                        <Box sx={{
+                                            display: "flex",
+                                            flexDirection: "row",
+                                            alignContent: "center",
+                                            justifyContent: "center",
+                                            width: "100%",
+                                            gap: 1,
+                                        }}>
+                                            <Tooltip title="Move to Top" placement="top">
+                                                <IconButton
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        api.post(`${apiUrl}/task/movetop`, { searchParams: { uid: task.uid } })
+                                                            .then(() => {
+                                                                fetchls();
+                                                                scrollTop && containerRef.current && (containerRef.current.scrollTo({
+                                                                    top: 0,
+                                                                    behavior: "smooth",
+                                                                }));
+                                                            })
+                                                            .catch(error => pushError(error, "Move task to top"));
+                                                    }}
+                                                    onMouseEnter={fetchls}
+                                                >
+                                                    <VerticalAlignTopRoundedIcon />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <IconButton disableRipple>
+                                                {taskSelected === index ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+                                            </IconButton>
+                                        </Box>
                                     </TableCell>
                                 </TableRow>
                                 <TableRow>

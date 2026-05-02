@@ -3,6 +3,7 @@ import re
 import psutil
 import json
 import shlex
+import os
 
 from fastapi import APIRouter, Query
 from datetime import timedelta, datetime, timezone
@@ -16,7 +17,11 @@ from src.models import (
     FileInfo,
 )
 from src.database import Database as db
+from src.logger import Lg
 from routes.file import FileOprations
+
+ENV = os.environ.copy()
+ENV["SVT_LOG"] = "2"
 
 
 class TaskOprations:
@@ -108,14 +113,14 @@ class TaskOprations:
         if task.args.sar_fix:
             video_filters.append(task.args.sar_fix)
         if task.settings.rotate is not None:
-            if task.settings.rotate in [0, 3]:
+            if task.settings.rotate in range(0, 4):
                 video_filters.append(f"transpose={task.settings.rotate}")
             elif task.settings.rotate == 4:
                 video_filters.append("hflip")
             elif task.settings.rotate == 5:
-                video_filters.append("vflip")
+                video_filters.append("hflip,transpose=2,transpose=2")
             elif task.settings.rotate == 6:
-                video_filters.append("hflip,vflip")
+                video_filters.append("transpose=2,transpose=2")
 
         filter_complex = []
         if len(task.input) > 1:
@@ -164,12 +169,16 @@ class TaskOprations:
             str(task.output.resolve()),
         ]
 
-        print(" ".join(shlex.quote(arg) for arg in cmd))
+        Lg.info(
+            f"Starting transcoding: {', '.join(str(t.path.resolve()) for t in task.input)} -> {task.output}"
+        )
+        Lg.debug(f"Running command: {" ".join(shlex.quote(arg) for arg in cmd)}\n\n")
 
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            env=ENV,
         )
 
         assert proc.stdout is not None
@@ -244,6 +253,9 @@ class TaskOprations:
             return ""
         else:
             task.output.unlink(missing_ok=True)
+            Lg.error(
+                f"ffmpeg failed: {proc.returncode} {await proc.stderr.read() if proc.stderr else 'Unknown error'}\n\n"
+            )
             return f"ffmpeg failed: {proc.returncode} {await proc.stderr.read() if proc.stderr else 'Unknown error'}"
 
     @classmethod
@@ -321,6 +333,9 @@ async def submit_task(
     update: bool = Query(
         False, description="Whether to update an existing task if uid is provided"
     ),
+    priority: bool = Query(
+        False, description="Whether to add the task to the top of the waiting queue"
+    ),
 ):
     """
     Submit a new transcoding task or update an existing one if uid is provided.
@@ -334,7 +349,21 @@ async def submit_task(
             task.uid,
         )
     else:
-        await db.insert_task(task)
+        await db.insert_task(task, priority=priority)
+
+
+@task_router.post("/movetop", response_model=None)
+async def move_to_top(
+    uid: int = Query(description="The uid of the waiting task to move to top"),
+):
+    await db.execute(
+        """
+        UPDATE waiting
+        SET uid = COALESCE((SELECT MIN(uid) - 1 FROM waiting), 1)
+        WHERE uid = ?;
+        """,
+        uid,
+    )
 
 
 @task_router.get("/waiting", response_model=list[ApiWaiting])

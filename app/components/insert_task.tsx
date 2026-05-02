@@ -84,6 +84,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
         scd: true,
     } as Settings);
     const [expanded, setExpanded] = useState(false);
+    const [priority, setPriority] = useState(false);
 
     // Task state
     const [taskInfo, setTaskInfo] = useState<Taskls[]>([]);
@@ -111,7 +112,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
     const handleInsert = async (path: string) => {
         let files = [] as string[];
         try {
-            const filels = (await api.get(`${apiUrl}/path/ls?path_str=${tempPath}`).json<PathInfo>()).file;
+            const filels = (await api.get(`${apiUrl}/path/ls?path_str=${path}`).json<PathInfo>()).file;
             if (filels.length === 0) {
                 files = [path];
             }
@@ -175,7 +176,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
         let is_error = false;
         for (const task of tasks) {
             try {
-                await api.post(`${apiUrl}/task/submit`, { json: task })
+                await api.post(`${apiUrl}/task/submit`, { json: task, searchParams: { priority: priority } });
             }
             catch (error) {
                 is_error = true;
@@ -193,7 +194,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
     // Effect hooks
     useEffect(() => {
         // If org_task is provided, initialize with its data
-        if (org_task) {
+        if (org_task && taskInfo.length === 0) {
             // Initialize with org_task data
             if (org_task.input.length > 1) {
                 setMultiInOne(true);
@@ -212,7 +213,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                 setTaskInfo(prev => [...prev, { input: org_task.input[0], trans: org_task.args } as Taskls]);
             }
             setSettingsInfo(org_task.settings);
-            setOutputDir(org_task.output);
+            setOutputDir(org_task.output.split("/").slice(0, -1).join("/") + "/");
         }
         else {
             // Initialize states when dialog opens
@@ -236,7 +237,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
 
 
     function SortableFileInput({ data, index }: { data: FileInfo; index: number }) {
-        const { ref, handleRef, isDragging } = useSortable({ id: data.path, index });
+        const { ref, handleRef } = useSortable({ id: data.path, index });
 
         return (
             <div ref={ref}>
@@ -284,7 +285,14 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
     }
 
     return (
-        <Dialog open={open} fullScreen>
+        <Dialog open={open} fullScreen onKeyDown={(e) => {
+            if (e.key === "Escape") {
+                onCancelled();
+            }
+            if (e.key == "Enter" && open) {
+                insertTasks();
+            }
+        }}>
             <DialogTitle>
                 <Typography variant="h4" fontWeight="bold">
                     Insert Task
@@ -380,6 +388,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                                         <PathSelector
                                             label="Path"
                                             onClose={(path) => setTempPath(path)}
+                                            onEnter={(path) => { setTempPath(path); handleInsert(path); setExtendInputInfo(""); }}
                                             org={tempPath.endsWith("/") ? tempPath : tempPath.split("/").slice(0, -1).join("/") + "/"}
                                         />
                                     </ListItemText>
@@ -408,6 +417,12 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                         <PathSelector
                             label="Output Dir"
                             onClose={(path) => setOutputDir(path)}
+                            onEnter={(path) => {
+                                setOutputDir(path);
+                                if (document.activeElement instanceof HTMLElement) {
+                                    document.activeElement.blur();
+                                }
+                            }}
                             org={outputDir}
                             type="dir"
                             addDir
@@ -510,6 +525,20 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                         },
                         gap: 3,
                     }}>
+                        <Box sx={{
+                            display: "flex",
+                            flexDirection: "row",
+                            width: "100%",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                        }}>
+                            <Tooltip title="Insert task(s) at the front of the queue." placement="right">
+                                <Typography variant="body1" fontWeight="bold">
+                                    Priority
+                                </Typography>
+                            </Tooltip>
+                            <Switch checked={priority} onChange={(e) => setPriority(e.target.checked)} />
+                        </Box>
                         {(([
                             ["Overwrite", "Overwrite the output file if it already exists.",
                                 (s: Settings) =>
@@ -761,7 +790,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                 </Button>
                 <Button
                     variant="contained"
-                    onClick={() => insertTasks()}
+                    onClick={insertTasks}
                     loading={inserting}
                     loadingPosition="end"
                 >

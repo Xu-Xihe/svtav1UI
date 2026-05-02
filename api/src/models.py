@@ -4,8 +4,7 @@ from enum import Enum
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
-
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 FileSuffixs = [
     ".mp4",

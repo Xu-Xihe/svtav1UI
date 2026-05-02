@@ -19,7 +19,7 @@ import SettingItem from "../components/setting_item";
 import { type Settings, Rotate } from "../hooks/model";
 
 
-const UI_VERSION = "1.1.0";
+const UI_VERSION = "1.2.0";
 
 
 export default function SysSettings() {
