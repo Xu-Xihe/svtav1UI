@@ -13,7 +13,7 @@ import {
 import CreateNewFolderRoundedIcon from '@mui/icons-material/CreateNewFolderRounded';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { api } from "../hooks/api";
 import { getLocalStorage } from "../hooks/storage";
@@ -150,11 +150,14 @@ export default function PathSelector({ label, onClose, onEnter = () => { }, type
                 width: "100%",
                 gap: 1,
             }}>
-                <IconButton onClick={() => {
-                    setPath(backPath(path));
-                    fetchFileList(backPath(path));
-                    onClose(backPath(path));
-                }}>
+                <IconButton
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                        setPath(backPath(path));
+                        fetchFileList(backPath(path));
+                        onClose(backPath(path));
+                    }}
+                >
                     <ArrowBackRoundedIcon color="primary" />
                 </IconButton>
                 <Autocomplete

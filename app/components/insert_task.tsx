@@ -29,7 +29,7 @@ import AddCircleRoundedIcon from '@mui/icons-material/AddCircleRounded';
 import BlurOnRoundedIcon from '@mui/icons-material/BlurOnRounded';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
 import { useNavigate } from "react-router";
 
@@ -46,6 +46,7 @@ import type { Settings, TaskInfo, FileInfo, TranscodeInfo } from "../hooks/model
 import { Rotate } from "../hooks/model";
 import PathSelector from "./pathselector";
 import type { PathInfo } from "./pathselector";
+import { GetEta, getTotalEta } from "../hooks/eta";
 
 interface Taskls {
     input: FileInfo
@@ -58,6 +59,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
     const apiUrl = getLocalStorage("apiUrl", "local");
     const { pushMsg, pushError } = useErrorMsg();
     const navigate = useNavigate();
+    const eta = useRef<number>(0);
 
     // Path state
     const [tempPath, setTempPath] = useLocalStorage("tempPath", "/", "local");
@@ -193,6 +195,11 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
 
     // Effect hooks
     useEffect(() => {
+        // Fetch ETA for reference when the dialog opens
+        api.get(`${apiUrl}/task/eta`).json<number>()
+            .then(data => eta.current = data)
+            .catch(error => pushError(error, "Fetch ETA"));
+
         // If org_task is provided, initialize with its data
         if (org_task && taskInfo.length === 0) {
             // Initialize with org_task data
@@ -406,9 +413,18 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                     px: 1,
                     gap: 3,
                 }}>
-                    <Typography variant="h6" fontWeight="bold">
-                        Output Settings
-                    </Typography>
+                    <Box sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                    }}>
+                        <Typography variant="h6" fontWeight="bold">
+                            Output Settings
+                        </Typography>
+                        <Typography variant="body2">
+                            Total ETA: {getTotalEta(eta.current, [...taskInfo.map(t => ({ input: [t.input], video_br: multiInOne ? multiargs.video_br : t.trans.video_br }))])}
+                        </Typography>
+                    </Box>
                     <Box sx={{
                         display: "flex",
                         alignItems: "center",
@@ -449,9 +465,16 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                                 alignItems: "start",
                                 gap: 1,
                             }}>
-                                <Typography variant="body1" fontWeight="bold" color="primary">
-                                    File
-                                </Typography>
+                                <Box sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 3,
+                                }}>
+                                    <Typography variant="body1" fontWeight="bold" color="primary">
+                                        File
+                                    </Typography>
+                                    <GetEta speed={eta.current} data={{ input: taskInfo.map(t => t.input), video_br: multiargs.video_br }} />
+                                </Box>
                                 {[
                                     ["Output Path", `${outputDir}${getFileStat(taskInfo[0]?.input.path)}.mp4`],
                                     ["Video Bitrate", `${(Math.min(multiargs.video_br / 1000 / 1000, settingsInfo.max_bitrate_mb)).toFixed(2)} Mbps`],
@@ -469,10 +492,18 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                                     justifyContent: "start",
                                     alignItems: "start",
                                     gap: 1,
+                                    mb: 3,
                                 }}>
-                                    <Typography variant="body1" fontWeight="bold" color="primary">
-                                        File {index + 1}
-                                    </Typography>
+                                    <Box sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 3,
+                                    }}>
+                                        <Typography variant="body1" fontWeight="bold" color="primary">
+                                            File {index + 1}
+                                        </Typography>
+                                        <GetEta speed={eta.current} data={{ input: [task.input], video_br: task.trans.video_br }} />
+                                    </Box>
                                     {[
                                         ["Output Path", `${outputDir}${getFileStat(task.input.path)}.mp4`],
                                         ["Video Bitrate", `${(Math.min(task.trans.video_br / 1000 / 1000, settingsInfo.max_bitrate_mb)).toFixed(2)} Mbps`],

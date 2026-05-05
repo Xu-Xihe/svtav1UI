@@ -69,6 +69,11 @@ class TaskOprations:
         except asyncio.CancelledError:
             if cls._running and task:
                 task.output.unlink(missing_ok=True)
+
+                row = await db.fetchone("SELECT MIN(uid) FROM waiting;")
+                min_uid = row[0] if row else None
+
+                task.uid = min_uid - 1 if min_uid is not None else 1
                 await db.insert_task(task)
 
     @staticmethod
@@ -422,7 +427,20 @@ async def get_completed():
 
 @task_router.post("/completed/clear", response_model=None)
 async def clear_completed():
-    await db.execute("DELETE FROM completed;")
+    num = (await db.fetchone("SELECT COUNT(*) FROM completed;"))[0]
+    if num <= 8:
+        await db.execute("DELETE FROM completed;")
+    else:
+        await db.execute(
+            """
+            DELETE FROM completed
+            WHERE rowid NOT IN (
+                SELECT rowid FROM completed
+                ORDER BY finished_time DESC
+                LIMIT 8
+            );
+            """,
+        )
 
 
 @task_router.post("/status", response_model=None)
@@ -438,3 +456,20 @@ async def pause_transcoding(
 @task_router.get("/status", response_model=bool)
 async def get_status():
     return TaskOprations._pause.is_set()
+
+
+@task_router.get("/eta", response_model=float)
+async def get_eta():
+    predict = 0.0
+    rows = await db.fetch("SELECT * FROM completed;")
+
+    for row in rows:
+        data = FileInfo.model_validate_json(row["output"])
+        total_consumed = (
+            float(row["total_consumed"].split(":")[0]) * 3600
+            + float(row["total_consumed"].split(":")[1]) * 60
+            + float(row["total_consumed"].split(":")[2])
+        )
+        predict += data.duration * data.bit_rate / total_consumed
+
+    return predict / len(rows) if len(rows) > 0 else 0.0

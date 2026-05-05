@@ -9,6 +9,11 @@ import {
     TableRow,
     Collapse,
     Button,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogContentText,
+    DialogActions,
 } from '@mui/material';
 import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
@@ -36,6 +41,7 @@ export default function Completed() {
 
     const [completedInfo, setCompletedInfo] = useState<ApiCompleted[]>([]);
     const [taskSelected, setTaskSelected] = useState<number>(-1);
+    const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
 
     const fetchls = () => {
@@ -48,6 +54,7 @@ export default function Completed() {
         api.post(`${apiUrl}/task/completed/clear`)
             .then(() => {
                 fetchls();
+                setClearConfirmOpen(false);
             })
             .catch(error => pushError(error, "Clear completed tasks"));
     }
@@ -80,6 +87,20 @@ export default function Completed() {
             width: "100%",
             height: "100%",
         }}>
+            <Dialog open={clearConfirmOpen} onClose={() => setClearConfirmOpen(false)} >
+                <DialogTitle>Are you sure to clear the completed tasks list?</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        The number of completed tasks is lower than 8.<br />
+                        If you still want to clear the list, the eta calulation for the waiting tasks will be unavailable until the next task is completed.<br />
+                        This action cannot be undone.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setClearConfirmOpen(false)} variant='outlined'>Cancel</Button>
+                    <Button onClick={clearList} variant='contained'>Apply</Button>
+                </DialogActions>
+            </Dialog>
             <TableContainer component={Box}>
                 <Table sx={{ width: "100%" }} stickyHeader>
                     <TableHead>
@@ -89,7 +110,14 @@ export default function Completed() {
                             <TableCell sx={{ minWidth: 188 }}>Total Consumed Time</TableCell>
                             <TableCell sx={{ minWidth: 148 }}>Finished Time</TableCell>
                             <TableCell sx={{ minWidth: 168 }}>
-                                <Button variant="contained" color="primary" onClick={clearList}>
+                                <Button variant="contained" color="primary" onClick={() => {
+                                    if (completedInfo.length <= 8) {
+                                        setClearConfirmOpen(true);
+                                    }
+                                    else {
+                                        clearList();
+                                    }
+                                }}>
                                     Clear List
                                 </Button>
                             </TableCell>
@@ -110,8 +138,8 @@ export default function Completed() {
                                         {taskSelected === index ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
                                     </TableCell>
                                 </TableRow>
-                                <TableRow>
-                                    <TableCell colSpan={5} sx={{ paddingBottom: 0, paddingTop: 0 }}>
+                                <TableRow sx={{ p: 0, m: 0 }}>
+                                    <TableCell colSpan={5} sx={{ p: 0, m: 0 }}>
                                         <Collapse in={taskSelected === index} timeout="auto" unmountOnExit>
                                             <Box sx={{
                                                 display: "flex",

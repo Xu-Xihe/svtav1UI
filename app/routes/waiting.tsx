@@ -25,6 +25,7 @@ import useLocalStorage, { getLocalStorage } from "../hooks/storage";
 import { FileInfoComponent, TaskInfoComponent } from "../components/info";
 import { api } from "../hooks/api";
 import type { TaskInfo } from "../hooks/model";
+import { GetEta, getTotalEta } from "../hooks/eta";
 
 interface ApiWaiting extends TaskInfo {
     has_retry: number
@@ -39,6 +40,7 @@ export default function Waiting() {
 
     const [waitingInfo, setWaitingInfo] = useState<ApiWaiting[]>([]);
     const [taskSelected, setTaskSelected] = useState<number>(-1);
+    const eta = useRef<number>(0);
 
     const fetchls = () => {
         api.get(`${apiUrl}/task/waiting`).json<ApiWaiting[]>()
@@ -57,6 +59,9 @@ export default function Waiting() {
 
     useEffect(() => {
         fetchls();
+        api.get(`${apiUrl}/task/eta`).json<number>()
+            .then(data => eta.current = data)
+            .catch(error => pushError(error, "Fetch ETA"));
     }, []);
 
 
@@ -87,11 +92,14 @@ export default function Waiting() {
                 <Table sx={{ width: "100%" }} stickyHeader>
                     <TableHead>
                         <TableRow>
-                            <TableCell sx={{ minwidth: 18 }}>UID</TableCell>
+                            <TableCell sx={{ minWidth: 18 }}>UID</TableCell>
                             <TableCell>Input</TableCell>
                             <TableCell>Output</TableCell>
-                            <TableCell sx={{ minwidth: 8 }}>Retry</TableCell>
-                            <TableCell sx={{ minwidth: 8 }}>
+                            <TableCell sx={{ minWidth: 188 }}>
+                                ETA: {getTotalEta(eta.current, waitingInfo)}
+                            </TableCell>
+                            <TableCell sx={{ minWidth: 8 }}>Retry</TableCell>
+                            <TableCell sx={{ minWidth: 8 }}>
                                 <Tooltip title="Auto scroll to top when move task to top." placement="top" arrow>
                                     <Switch checked={scrollTop} onChange={(_, v) => setScrollTop(v)} />
                                 </Tooltip>
@@ -108,6 +116,9 @@ export default function Waiting() {
                                     <TableCell>{task.uid}</TableCell>
                                     <TableCell>{task.input.map((file) => file.path.split("/").pop()).join(", ")}</TableCell>
                                     <TableCell>{task.output}</TableCell>
+                                    <TableCell>
+                                        <GetEta speed={eta.current} data={task} />
+                                    </TableCell>
                                     <TableCell>{task.has_retry}</TableCell>
                                     <TableCell>
                                         <Box sx={{
@@ -143,8 +154,8 @@ export default function Waiting() {
                                         </Box>
                                     </TableCell>
                                 </TableRow>
-                                <TableRow>
-                                    <TableCell colSpan={5} sx={{ p: 0 }}>
+                                <TableRow sx={{ p: 0, m: 0 }}>
+                                    <TableCell colSpan={6} sx={{ p: 0, m: 0 }}>
                                         <Collapse in={taskSelected === index} timeout="auto" unmountOnExit>
                                             <Box sx={{
                                                 display: "flex",

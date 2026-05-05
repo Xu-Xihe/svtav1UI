@@ -43,8 +43,8 @@ async def lifespan(app: FastAPI):
     queue.cancel()
     try:
         await queue
-    except asyncio.CancelledError:
-        pass
+    except asyncio.CancelledError as e:
+        print("End queue: ", e)
     await Database.close()
     await SettingsManager.close()
 
