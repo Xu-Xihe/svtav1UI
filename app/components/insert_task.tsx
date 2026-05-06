@@ -422,7 +422,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                             Output Settings
                         </Typography>
                         <Typography variant="body2">
-                            Total ETA: {getTotalEta(eta.current, [...taskInfo.map(t => ({ input: [t.input], video_br: multiInOne ? multiargs.video_br : t.trans.video_br }))])}
+                            Total ETA: {getTotalEta(eta.current, [...taskInfo.filter((task) => allowAv1 || task.input.codec !== "av1").map((task) => ({ input: [task.input], video_br: multiInOne ? multiargs.video_br : task.trans.video_br }))])}
                         </Typography>
                     </Box>
                     <Box sx={{
