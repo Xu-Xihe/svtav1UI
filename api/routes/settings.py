@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from pathlib import Path
 
 from src.models import Settings, VERSION
-
+from src.eta import ETA
 
 PATH = Path(__file__).parent.parent / "cache" / "settings.json"
 
@@ -16,6 +16,7 @@ class SettingsManager:
         if PATH.exists():
             with open(PATH, "r", encoding="utf-8") as f:
                 cls._settings = Settings.model_validate_json(f.read())
+        ETA.vca_on = cls._settings.vca_on
 
     @classmethod
     async def close(cls) -> None:
@@ -41,6 +42,7 @@ async def update_settings(settings: Settings):
     """
     print(settings)
     SettingsManager._settings = settings
+    ETA.vca_on = settings.vca_on
     return SettingsManager._settings
 
 

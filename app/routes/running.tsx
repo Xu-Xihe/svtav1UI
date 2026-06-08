@@ -9,6 +9,8 @@ import {
     DialogContent,
     DialogActions,
 } from '@mui/material';
+import PauseCircleOutlineRoundedIcon from '@mui/icons-material/PauseCircleOutlineRounded';
+import PlayCircleOutlineRoundedIcon from '@mui/icons-material/PlayCircleOutlineRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 
 import { useQuery } from '@tanstack/react-query';
@@ -46,6 +48,7 @@ export default function Running() {
     const { pushMsg, pushError } = useErrorMsg();
 
     const [runningInfo, setRunningInfo] = useState<ApiRunning | null>(null);
+    const [isPaused, setIsPaused] = useState(false);
     const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
 
     useQuery({
@@ -85,7 +88,7 @@ export default function Running() {
             <>
                 <Dialog open={cancelDialogOpen} onClose={() => setCancelDialogOpen(false)} fullWidth>
                     <DialogTitle>
-                        <Typography variant="h6" fontWeight="bold">
+                        <Typography variant="h6" sx={{ fontWeight: "bold" }}>
                             Cancel Task
                         </Typography>
                     </DialogTitle>
@@ -133,7 +136,6 @@ export default function Running() {
                         justifyContent: "space-between",
                         alignItems: "center",
                         width: "100%",
-                        gap: 1,
                         px: 3,
                         pt: 3,
                         pb: 1,
@@ -141,14 +143,41 @@ export default function Running() {
                         <Typography variant="h4">
                             Running Task
                         </Typography>
-                        <Button
-                            variant='outlined'
-                            color='error'
-                            startIcon={<CloseRoundedIcon />}
-                            onClick={() => setCancelDialogOpen(true)}
-                        >
-                            Cancel
-                        </Button>
+                        <Box sx={{
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            gap: 3,
+                        }}>
+                            <Button
+                                color={isPaused ? "error" : "primary"}
+                                variant={isPaused ? 'contained' : 'outlined'}
+                                startIcon={isPaused ? <PlayCircleOutlineRoundedIcon /> : <PauseCircleOutlineRoundedIcon />}
+                                onClick={() => {
+                                    api.post(`${apiUrl}/task/running/pause`, { searchParams: { set: isPaused } }).json<boolean>()
+                                        .then((is_set) => {
+                                            setIsPaused(!is_set);
+                                            pushMsg(`Task ${!is_set ? "paused" : "resumed"} successfully.`, "success");
+                                        })
+                                        .catch((error) => pushError(error, "Get Pause/Resume Status"));
+                                }}
+                                onMouseEnter={() => {
+                                    api.get(`${apiUrl}/task/running/pause`).json<boolean>()
+                                        .then((is_set) => setIsPaused(!is_set))
+                                        .catch((error) => pushError(error, "Get Pause/Resume Status"));
+                                }}
+                            >
+                                {isPaused ? "Resume" : "Pause"}
+                            </Button>
+                            <Button
+                                variant='outlined'
+                                color='error'
+                                startIcon={<CloseRoundedIcon />}
+                                onClick={() => setCancelDialogOpen(true)}
+                            >
+                                Cancel
+                            </Button>
+                        </Box>
                     </Box>
                     <Divider flexItem variant='fullWidth' />
                     <Box sx={{

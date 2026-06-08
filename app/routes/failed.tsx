@@ -37,6 +37,7 @@ export default function Failed() {
     const [failedInfo, setFailedInfo] = useState<ApiFailed[]>([]);
     const [errorDialog, setErrorDialog] = useState<number>(-1);
     const [insertTask, setInsertTask] = useState<ApiFailed | null>(null);
+    const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
     const fetchls = () => {
         api.get(`${apiUrl}/task/failed`).json<ApiFailed[]>()
@@ -49,7 +50,7 @@ export default function Failed() {
             pushMsg("Invalid task UID.");
             return;
         }
-        api.get(`${apiUrl}/task/failed/delete`, { searchParams: { uid } })
+        api.post(`${apiUrl}/task/failed/delete`, { searchParams: { uid } })
             .then(() => {
                 fetchls();
             })
@@ -76,6 +77,24 @@ export default function Failed() {
 
     return (
         <>
+            <Dialog open={clearConfirmOpen} onClose={() => setClearConfirmOpen(false)} >
+                <DialogTitle>Are you sure to clear the completed tasks list?</DialogTitle>
+                <DialogActions>
+                    <Button onClick={() => setClearConfirmOpen(false)} variant='outlined'>Cancel</Button>
+                    <Button
+                        onClick={() => {
+                            api.post(`${apiUrl}/task/failed/clear`)
+                                .then(() => {
+                                    fetchls();
+                                })
+                                .catch(error => pushError(error, "Clear failed tasks"));
+                            setClearConfirmOpen(false);
+                        }}
+                        variant='contained'>
+                        Apply
+                    </Button>
+                </DialogActions>
+            </Dialog>
             {insertTask &&
                 <InsertTask
                     open
@@ -134,7 +153,15 @@ export default function Failed() {
                             <TableRow>
                                 <TableCell>Input</TableCell>
                                 <TableCell>Output</TableCell>
-                                <TableCell></TableCell>
+                                <TableCell>
+                                    <Button
+                                        variant="contained"
+                                        color="primary"
+                                        onClick={() => setClearConfirmOpen(true)}
+                                    >
+                                        Clear List
+                                    </Button>
+                                </TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>

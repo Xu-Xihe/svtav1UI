@@ -9,6 +9,7 @@ import {
     TableRow,
     Collapse,
     Button,
+    IconButton,
     Dialog,
     DialogTitle,
     DialogContent,
@@ -89,13 +90,6 @@ export default function Completed() {
         }}>
             <Dialog open={clearConfirmOpen} onClose={() => setClearConfirmOpen(false)} >
                 <DialogTitle>Are you sure to clear the completed tasks list?</DialogTitle>
-                <DialogContent>
-                    <DialogContentText>
-                        The number of completed tasks is lower than 8.<br />
-                        If you still want to clear the list, the eta calulation for the waiting tasks will be unavailable until the next task is completed.<br />
-                        This action cannot be undone.
-                    </DialogContentText>
-                </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setClearConfirmOpen(false)} variant='outlined'>Cancel</Button>
                     <Button onClick={clearList} variant='contained'>Apply</Button>
@@ -110,14 +104,11 @@ export default function Completed() {
                             <TableCell sx={{ minWidth: 188 }}>Total Consumed Time</TableCell>
                             <TableCell sx={{ minWidth: 148 }}>Finished Time</TableCell>
                             <TableCell sx={{ minWidth: 168 }}>
-                                <Button variant="contained" color="primary" onClick={() => {
-                                    if (completedInfo.length <= 8) {
-                                        setClearConfirmOpen(true);
-                                    }
-                                    else {
-                                        clearList();
-                                    }
-                                }}>
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    onClick={() => setClearConfirmOpen(true)}
+                                >
                                     Clear List
                                 </Button>
                             </TableCell>
@@ -135,7 +126,9 @@ export default function Completed() {
                                     <TableCell>{task.total_consumed}</TableCell>
                                     <TableCell>{new Date(task.finished_time).toLocaleString('zh-CN')}</TableCell>
                                     <TableCell>
-                                        {taskSelected === index ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+                                        <IconButton disableRipple>
+                                            {taskSelected === index ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+                                        </IconButton>
                                     </TableCell>
                                 </TableRow>
                                 <TableRow sx={{ p: 0, m: 0 }}>

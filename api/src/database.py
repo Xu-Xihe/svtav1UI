@@ -2,13 +2,22 @@ import sqlite3
 import json
 
 from pathlib import Path
-from src.models import ApiWaiting, TaskInfo, FileInfo, TranscodeInfo, Settings
+from src.models import (
+    ApiWaiting,
+    TaskInfo,
+    FileInfo,
+    TranscodeInfo,
+    Settings,
+    FileETAInfo,
+)
 
 DB_PATH = Path(__file__).parent.parent / "cache" / "config.db"
 
 TABLES = {
     "waiting": {
         "uid": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "sort": "REAL NOT NULL",
+        "eta": "TEXT NOT NULL",
         "input": "TEXT NOT NULL",
         "output": "TEXT NOT NULL",
         "args": "TEXT NOT NULL",
@@ -29,6 +38,26 @@ TABLES = {
         "output": "TEXT NOT NULL",
         "total_consumed": "INTEGER NOT NULL",
         "finished_time": "TEXT NOT NULL",
+    },
+    "history": {
+        "uid": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "total_consumed": "INTEGER NOT NULL",
+        "codec": "INTEGER NOT NULL",
+        "pixel_count": "INTEGER NOT NULL",
+        "pixels_per_second": "REAL NOT NULL",
+        "frame_count": "INTEGER NOT NULL",
+        "preset": "INTEGER NOT NULL",
+        "target_bit_rate": "INTEGER NOT NULL",
+        "lookahead": "INTEGER NOT NULL",
+        "keyint": "INTEGER NOT NULL",
+        "scd": "INTEGER NOT NULL",
+        "E_mean": "REAL",
+        "E_p95": "REAL",
+        "E_diff_mean": "REAL",
+        "h_mean": "REAL",
+        "h_diff_mean": "REAL",
+        "epsilon_mean": "REAL",
+        "epsilon_diff_mean": "REAL",
     },
 }
 
@@ -56,6 +85,24 @@ class Database:
                 cls._cursor.execute(
                     f"CREATE TABLE {table_name} ({', '.join(f'{name} {col_type}' for name, col_type in columns.items())});"
                 )
+
+        # Rerank waiting tasks based on sort value
+        await cls.execute(
+            """
+                WITH ranked AS (
+                    SELECT
+                        uid,
+                        ROW_NUMBER() OVER (ORDER BY sort, uid) * 1000 AS new_sort
+                    FROM waiting
+                )
+                UPDATE waiting
+                SET sort = (
+                    SELECT new_sort
+                    FROM ranked
+                    WHERE ranked.uid = waiting.uid
+                );
+            """,
+        )
 
         # Commit changes
         cls._database.commit()
@@ -90,36 +137,6 @@ class Database:
             cls._cursor = None
 
     @classmethod
-    async def insert_task(
-        cls,
-        task: ApiWaiting | TaskInfo,
-        priority: bool = False,
-    ) -> None:
-        if not all(f.path.is_file() for f in task.input):
-            raise Exception("Input file not found.")
-
-        if task.output.is_dir():
-            task.output = task.output / f"{task.input[0].path.stem}.mp4"
-
-        await cls.execute(
-            f"""
-                INSERT INTO waiting
-                ({'uid,' if task.uid or priority else ''}input, output, args, settings, has_retry, error)
-                VALUES ({str(task.uid) + ',' if task.uid else 'COALESCE((SELECT MIN(uid) - 1 FROM waiting), 1),' if priority else ''}?, ?, ?, ?, ?, ?);
-            """,
-            json.dumps(
-                [f.model_dump(mode="json") for f in task.input], ensure_ascii=False
-            ),
-            str(task.output.resolve()),
-            task.args.model_dump_json(),
-            task.settings.model_dump_json(),
-            task.has_retry if isinstance(task, ApiWaiting) else 0,
-            json.dumps(
-                task.error if isinstance(task, ApiWaiting) else [], ensure_ascii=False
-            ),
-        )
-
-    @classmethod
     async def fetch_data(cls, row) -> TaskInfo:
         return TaskInfo(
             uid=row["uid"],
@@ -135,4 +152,6 @@ class Database:
             **(await cls.fetch_data(row)).model_dump(),
             has_retry=row["has_retry"],
             error=json.loads(row["error"]),
+            sort=row["sort"],
+            eta=FileETAInfo.model_validate_json(row["eta"]),
         )

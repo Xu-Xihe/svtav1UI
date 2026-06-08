@@ -111,12 +111,12 @@ export default function PathSelector({ label, onClose, onEnter = () => { }, type
                         e.preventDefault();
                         e.stopPropagation();
                         makeDir();
-                        onClose(path + openNewFolder + "/");
+                        onClose((path.endsWith("/") ? path : path + "/") + openNewFolder + "/");
                     }
                 }}
             >
                 <DialogTitle>
-                    <Typography variant="h6" fontWeight="bold">
+                    <Typography variant="h6" sx={{ fontWeight: "bold" }}>
                         Create New Folder
                     </Typography>
                 </DialogTitle>
@@ -136,7 +136,7 @@ export default function PathSelector({ label, onClose, onEnter = () => { }, type
                         variant="contained"
                         onClick={() => {
                             makeDir();
-                            onClose(path + openNewFolder + "/");
+                            onClose((path.endsWith("/") ? path : path + "/") + openNewFolder + "/");
                         }}
                         disabled={openNewFolder === ""}
                     >

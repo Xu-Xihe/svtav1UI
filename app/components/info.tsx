@@ -33,6 +33,8 @@ export function FileInfoComponent({ fileInfo }: { fileInfo: FileInfo[] }) {
                             ["Width", file.width],
                             ["Height", file.height],
                             ["SAR", file.sar],
+                            ["Pixel Format", file.pix_fmt],
+                            ["Color Info", `s: ${file.color_space}; t: ${file.color_transfer}; p: ${file.color_primaries}`],
                             ["Bit Rate", `${(file.bit_rate / 1000 / 1000).toFixed(2)} Mbps`],
                             ["Frame Rate", `${file.frame_rate} fps`],
                             ["Duration", `${Math.floor(file.duration / 60)} min ${Math.floor(file.duration % 60)} sec`],
@@ -79,9 +81,11 @@ export function TaskInfoComponent({ taskInfo }: { taskInfo: TaskInfo }) {
                     <b>Args:</b>
                 </Typography>
                 {[
-                    ["SAR Fix", taskInfo.args.sar_fix === "" ? "No" : taskInfo.args.sar_fix],
                     ["Video Bit Rate", `${(taskInfo.args.video_br / 1000 / 1000).toFixed(2)} Mbps`],
                     ["Audio Bit Rate", `${(taskInfo.args.audio_br / 1000).toFixed(2)} kbps`],
+                    ["Pixel Format", taskInfo.args.pix_fmt],
+                    ["SAR Fix", taskInfo.args.sar_fix === "" ? "No" : taskInfo.args.sar_fix],
+                    ["Zscale", taskInfo.args.zscale],
                 ].map(([key, value]) => (
                     <Typography key={key} sx={{
                         pl: 2,

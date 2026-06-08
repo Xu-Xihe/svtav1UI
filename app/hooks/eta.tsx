@@ -1,11 +1,11 @@
 import { Tooltip, Typography } from "@mui/material";
 
-import type { FileInfo, TaskInfo } from "./model";
+import { useEffect, useState } from "react";
 
-interface EtaInput {
-    input: FileInfo[],
-    video_br: number
-}
+import type { TaskInfo, FileETAInfo } from "./model";
+import { api } from "./api";
+import { useErrorMsg } from "../components/error_popout";
+import { getLocalStorage } from "../hooks/storage";
 
 
 function showEta(seconds: number) {
@@ -32,49 +32,36 @@ function showEta(seconds: number) {
     }
 }
 
-export function getTotalEta(speed: number, data: TaskInfo[] | EtaInput[]) {
-    if (speed === 0) {
-        return "N/A";
-    }
+export async function getEta(task: TaskInfo | FileETAInfo) {
+    const apiUrl = getLocalStorage("apiUrl", "local");
+    const { pushError } = useErrorMsg.getState();
 
-    let eta = 0;
-    for (const task of data) {
-        for (const f of task.input) {
-            if ("video_br" in task) {
-                eta += f.duration * task.video_br / speed;
-            }
-            else {
-                eta += f.duration * task.args.video_br / speed;
-            }
-        }
+    try {
+        const res = await api.post(`${apiUrl}/plan/eta`, { json: task }).json<number>();
+        return res;
     }
-
-    return showEta(eta);
+    catch (err) {
+        pushError(err, "Fetch ETA");
+        return -1;
+    }
 }
 
-export function GetEta({ speed, data }: { speed: number; data: TaskInfo | EtaInput }) {
-    if (speed === 0) {
-        return (
-            <Tooltip title="ETA is caculated based on the completed tasks. No completed task found.">
-                <Typography variant="body2">N/A</Typography>
-            </Tooltip>
-        )
-    }
-    else {
-        let eta = 0;
-        for (const f of data.input) {
-            if ("video_br" in data) {
-                eta += f.duration * data.video_br / speed;
-            }
-            else {
-                eta += f.duration * data.args.video_br / speed;
-            }
-        }
+export function EtaText({ eta, title = "" }: { eta: number; title?: string }) {
 
-        return (
-            <Tooltip title="ETA is caculated based on the completed tasks. For reference only.">
-                <Typography variant="body2">{showEta(eta)}</Typography>
-            </Tooltip>
-        )
+    const formateInterval = (interval: number) => {
+        const hours = Math.floor(interval / 3600);
+        const minutes = Math.floor((interval % 3600) / 60);
+        const seconds = Math.floor(interval % 60);
+
+        return `${hours > 0 ? `${hours} hours ` : ""}${minutes > 0 ? `${minutes} minutes ` : ""}${seconds} seconds`;
     }
+
+
+    return (
+        <Tooltip title={eta <= 0 ? "ETA model is not available." : `Precise prediction: ${formateInterval(eta)}.`}>
+            <Typography variant="body2">
+                <b>{title}</b>{showEta(eta)}
+            </Typography>
+        </Tooltip>
+    )
 }

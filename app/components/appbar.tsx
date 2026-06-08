@@ -12,6 +12,7 @@ import {
 import ContrastRoundedIcon from '@mui/icons-material/ContrastRounded';
 import CableRoundedIcon from '@mui/icons-material/CableRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
+import PendingActionsRoundedIcon from '@mui/icons-material/PendingActionsRounded';
 import { useColorScheme } from '@mui/material/styles';
 
 import { useEffect, useState } from "react";
@@ -23,6 +24,7 @@ import { api } from "../hooks/api";
 import { useErrorMsg } from "../components/error_popout";
 import DisconnectBackdrop from "./disconnect_backdrop";
 import useLocalStorage, { getLocalStorage } from "../hooks/storage";
+import SchedualPopout from "./schedual_popout";
 
 
 export default function AppBarComponent() {
@@ -35,6 +37,7 @@ export default function AppBarComponent() {
     const preferIsDark = useMediaQuery("(prefers-color-scheme: dark)");
     const [themeMode, setThemeMode] = useLocalStorage<'light' | 'dark' | 'system'>('theme-mode', 'system', 'local');
 
+    const [planOpen, setPlanOpen] = useState(false);
     const [apiConnect, setApiConnect] = useState<boolean>(false);
     const [status, setStatus] = useState<boolean>(true);
 
@@ -62,7 +65,7 @@ export default function AppBarComponent() {
         },
         retry: 0,
         refetchInterval: 3000,
-        refetchIntervalInBackground: true,
+        refetchOnWindowFocus: false,
     });
 
     const changeThemeMode = () => {
@@ -97,6 +100,7 @@ export default function AppBarComponent() {
     return (
         <>
             <DisconnectBackdrop open={!apiConnect} />
+            {planOpen && <SchedualPopout onClose={() => setPlanOpen(false)} />}
             <AppBar
                 position="fixed"
                 sx={{
@@ -118,7 +122,7 @@ export default function AppBarComponent() {
                         gap: 3,
                     }}>
                         <Avatar alt="svtav1UI" src="/icon.png" variant="rounded" />
-                        <Typography variant="h4" fontWeight="bold">
+                        <Typography variant="h4" sx={{ fontWeight: "bold" }}>
                             SVT-AV1 UI
                         </Typography>
                     </Box>
@@ -126,6 +130,9 @@ export default function AppBarComponent() {
                         display: 'flex',
                         gap: 1,
                     }}>
+                        <IconButton onClick={() => setPlanOpen(true)} disabled>
+                            <PendingActionsRoundedIcon />
+                        </IconButton>
                         <Tooltip title={<>
                             Green: OK
                             <br />

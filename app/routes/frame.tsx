@@ -53,7 +53,7 @@ export default function Home() {
                 height: 'calc(100vh - 68px)',
                 width: '100vw',
                 display: 'flex',
-                justifyContent: 'center',
+                justifyContent: 'flex-start',
                 alignItems: 'center',
                 overflowY: 'auto',
                 backgroundColor: (theme) => theme.vars?.palette.background.default,
@@ -63,7 +63,7 @@ export default function Home() {
                     flexDirection: 'column',
                     justifyContent: 'flex-start',
                     alignItems: 'flex-start',
-                    width: 228,
+                    width: 198,
                     height: "100%",
                     flexShrink: 0,
                     flexGrow: 0,
@@ -85,7 +85,7 @@ export default function Home() {
                         .map(([subheader, items]) => (
                             <List
                                 key={subheader}
-                                sx={{ p: 0, m: 0, width: "100%" }}
+                                sx={{ py: 0, width: "100%" }}
                                 subheader={
                                     <ListSubheader>
                                         {subheader}
@@ -93,15 +93,14 @@ export default function Home() {
                                 }
                             >
                                 {items.map(([text, path, icon]) => (
-                                    <ListItem key={text} disablePadding>
-                                        <ListItemButton
-                                            selected={location.pathname === path}
-                                            onClick={() => navigate(path)}
-                                        >
-                                            <ListItemIcon>{icon}</ListItemIcon>
-                                            <ListItemText primary={text} />
-                                        </ListItemButton>
-                                    </ListItem>
+                                    <ListItemButton
+                                        key={text}
+                                        selected={location.pathname === path}
+                                        onClick={() => navigate(path)}
+                                    >
+                                        <ListItemIcon>{icon}</ListItemIcon>
+                                        <ListItemText primary={text} />
+                                    </ListItemButton>
                                 ))}
                             </List>
                         ))}
@@ -131,7 +130,7 @@ export default function Home() {
                     flexDirection: 'column',
                     justifyContent: 'flex-start',
                     alignItems: 'flex-start',
-                    width: "calc(100vw - 228px)",
+                    width: "calc(100vw - 198px)",
                     height: "100%",
                 }}>
                     <Outlet />

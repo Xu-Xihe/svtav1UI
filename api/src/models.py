@@ -1,10 +1,9 @@
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional
-from enum import Enum
+from typing import Optional, Literal
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
-VERSION = "1.3.1"
+VERSION = "2.0.0"
 
 FileSuffixs = [
     ".mp4",
@@ -46,6 +45,8 @@ Codec = {
     "mp4v": 0.15,
 }
 
+CODEC_ID = {k: i for i, k in enumerate(Codec)}
+
 
 # Base Models
 class FileInfo(BaseModel):
@@ -55,6 +56,10 @@ class FileInfo(BaseModel):
     width: int
     height: int
     sar: str
+    pix_fmt: str
+    color_space: str
+    color_transfer: str
+    color_primaries: str
     bit_rate: int
     frame_rate: float
     duration: float
@@ -74,7 +79,37 @@ class FileInfo(BaseModel):
             return v
 
 
+class FileETAInfo(BaseModel):
+    codec: int
+    pixel_count: int
+    pixels_per_second: float
+    frame_count: int
+
+    preset: int
+    target_bit_rate: int
+    lookahead: int
+    keyint: int  # frame count
+    scd: bool
+
+    E_mean: Optional[float] = None
+    E_p95: Optional[float] = None
+    E_diff_mean: Optional[float] = None
+
+    h_mean: Optional[float] = None
+    h_diff_mean: Optional[float] = None
+
+    epsilon_mean: Optional[float] = None
+    epsilon_diff_mean: Optional[float] = None
+
+    @field_validator("codec")
+    def validate_codec(cls, v):
+        if isinstance(v, str):
+            v = CODEC_ID.get(v, -1)
+        return v
+
+
 class Settings(BaseModel):
+    vca_on: bool = True
     overwrite: bool = False
     delete_source: bool = True
     rotate: Optional[int] = Field(default=None, ge=0, le=6)
@@ -93,6 +128,8 @@ class Settings(BaseModel):
 
 
 class TranscodeInfo(BaseModel):
+    pix_fmt: str
+    zscale: str
     sar_fix: str = ""
     video_br: int
     audio_br: int
@@ -104,6 +141,18 @@ class TaskInfo(BaseModel):
     output: Path
     args: TranscodeInfo
     settings: Settings
+
+
+class TaskSchedule(BaseModel):
+    on: bool = False
+    finish_time: datetime
+    max_extend: int = 8  # in minutes
+    sort: Literal["default", "longest", "shortest"] = "default"
+    weight: Literal["size", "duration"] = "size"
+
+
+class HistoryTable(FileETAInfo):
+    total_consumed: int
 
 
 # Api Models
@@ -142,6 +191,8 @@ class ApiRunning(TaskInfo):
 
 
 class ApiWaiting(TaskInfo):
+    sort: float
+    eta: FileETAInfo
     has_retry: int = 0
     error: list[str] = []
 
@@ -160,3 +211,9 @@ class ApiCompleted(BaseModel):
 class ApiPathls(BaseModel):
     dir: list[str]
     file: list[str]
+
+
+class ApiSort(BaseModel):
+    uid: int
+    last: Optional[int] = None
+    next: Optional[int] = None

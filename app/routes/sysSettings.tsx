@@ -19,7 +19,7 @@ import SettingItem from "../components/setting_item";
 import { type Settings, Rotate } from "../hooks/model";
 
 
-const UI_VERSION = "1.3.0";
+const UI_VERSION = "2.0.0";
 
 
 export default function SysSettings() {
@@ -27,6 +27,7 @@ export default function SysSettings() {
     const { pushError } = useErrorMsg();
 
     const [settingsInfo, setSettingsInfo] = useState<Settings>({
+        vca_on: true,
         overwrite: false,
         delete_source: true,
         rotate: null,
@@ -101,6 +102,13 @@ export default function SysSettings() {
             </Box>
             {
                 ([
+                    ["VCA", "Enable VCA (Video Content Analysis) if available.",
+                        (s: Settings) =>
+                            <Switch
+                                checked={s.vca_on}
+                                onChange={(e) => { updateSettings({ ...s, vca_on: e.target.checked }) }}
+                            />
+                    ],
                     ["Overwrite", "Overwrite the output file if it already exists.",
                         (s: Settings) =>
                             <Switch

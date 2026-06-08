@@ -29,7 +29,7 @@ import AddCircleRoundedIcon from '@mui/icons-material/AddCircleRounded';
 import BlurOnRoundedIcon from '@mui/icons-material/BlurOnRounded';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { useNavigate } from "react-router";
 
@@ -46,11 +46,12 @@ import type { Settings, TaskInfo, FileInfo, TranscodeInfo } from "../hooks/model
 import { Rotate } from "../hooks/model";
 import PathSelector from "./pathselector";
 import type { PathInfo } from "./pathselector";
-import { GetEta, getTotalEta } from "../hooks/eta";
+import { getEta, EtaText } from "../hooks/eta";
 
 interface Taskls {
     input: FileInfo
     trans: TranscodeInfo
+    eta: number
 }
 
 
@@ -59,7 +60,6 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
     const apiUrl = getLocalStorage("apiUrl", "local");
     const { pushMsg, pushError } = useErrorMsg();
     const navigate = useNavigate();
-    const eta = useRef<number>(0);
 
     // Path state
     const [tempPath, setTempPath] = useLocalStorage("tempPath", "/", "local");
@@ -67,6 +67,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
     // Input state
     const [multiInOne, setMultiInOne] = useState(false);
     const [allowAv1, setAllowAv1] = useState(false);
+    const [multiEta, setMultiEta] = useState(-1);
     const [multiargs, setMultiargs] = useState<TranscodeInfo>({ sar_fix: "", video_br: 0, audio_br: 0 } as TranscodeInfo);
     const [extendInputInfo, setExtendInputInfo] = useState<string>(""); // -2 for none, >=0 for showing input info of taskInfo[extendInputInfo]
 
@@ -131,7 +132,8 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                     }
                     const input = await api.get(`${apiUrl}/file/info?file_path=${file}`).json<FileInfo>();
                     const trans = await api.post(`${apiUrl}/file/single`, { json: input }).json<TranscodeInfo>();
-                    setTaskInfo(prev => [...prev, { input, trans } as Taskls]);
+                    getEta({ input: [input], args: trans, settings: settingsInfo, output: "" })
+                        .then((res) => setTaskInfo(prev => [...prev, { input, trans, eta: res } as Taskls]))
                 }
                 catch (error) {
                     pushError(error, "Fetch File Info: " + file);
@@ -195,11 +197,6 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
 
     // Effect hooks
     useEffect(() => {
-        // Fetch ETA for reference when the dialog opens
-        api.get(`${apiUrl}/task/eta`).json<number>()
-            .then(data => eta.current = data)
-            .catch(error => pushError(error, "Fetch ETA"));
-
         // If org_task is provided, initialize with its data
         if (org_task && taskInfo.length === 0) {
             // Initialize with org_task data
@@ -208,7 +205,8 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                 for (const input of org_task.input) {
                     api.post(`${apiUrl}/file/single`, { json: input }).json<TranscodeInfo>()
                         .then(data => {
-                            setTaskInfo(prev => [...prev, { input, trans: data } as Taskls]);
+                            getEta({ input: [input], args: data, settings: settingsInfo, output: "" })
+                                .then((res) => setTaskInfo(prev => [...prev, { input, trans: data, eta: res } as Taskls]))
                         })
                         .catch(error => {
                             pushError(error, "Fetch File Info");
@@ -217,7 +215,8 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
 
             }
             else {
-                setTaskInfo(prev => [...prev, { input: org_task.input[0], trans: org_task.args } as Taskls]);
+                getEta({ input: org_task.input, args: org_task.args, settings: org_task.settings, output: "" })
+                    .then((res) => setTaskInfo(prev => [...prev, { input: org_task.input[0], trans: org_task.args, eta: res } as Taskls]))
             }
             setSettingsInfo(org_task.settings);
             setOutputDir(org_task.output.split("/").slice(0, -1).join("/") + "/");
@@ -234,12 +233,37 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
         api.post(`${apiUrl}/file/multi`, { json: taskInfo.map(t => t.input) }).json<TranscodeInfo>()
             .then(data => {
                 setMultiargs(data);
+                getEta({ input: taskInfo.map(t => t.input), args: data, settings: settingsInfo, output: "" }).then((res) => setMultiEta(res));
             })
             .catch(error => {
                 setMultiInOne(false);
                 pushError(error, "Multi-in-one");
             })
     }, [multiInOne, taskInfo]);
+
+    useEffect(() => {
+        if (taskInfo.length === 0) return;
+        if (multiInOne) {
+            getEta({ input: taskInfo.map(t => t.input), args: multiargs, settings: settingsInfo, output: "" }).then((res) => setMultiEta(res));
+        }
+        const newTaskInfo: Taskls[] = [];
+        for (const t of taskInfo) {
+            getEta({ input: [t.input], args: t.trans, settings: settingsInfo, output: "" })
+                .then((res) => newTaskInfo.push({ ...t, eta: res }))
+
+        }
+        setTaskInfo(newTaskInfo);
+    }, [
+        settingsInfo.max_bitrate_mb,
+        settingsInfo.preset,
+        settingsInfo.overshoot_pct,
+        settingsInfo.undershoot_pct,
+        settingsInfo.minsection_pct,
+        settingsInfo.maxsection_pct,
+        settingsInfo.keyint,
+        settingsInfo.lookahead,
+        settingsInfo.scd,
+    ]);
 
 
 
@@ -301,7 +325,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
             }
         }}>
             <DialogTitle>
-                <Typography variant="h4" fontWeight="bold">
+                <Typography variant="h4" sx={{ fontWeight: "bold" }}>
                     Insert Task
                 </Typography>
             </DialogTitle>
@@ -321,7 +345,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                         justifyContent: "space-between",
                         alignItems: "center",
                     }}>
-                        <Typography variant="h6" fontWeight="bold">
+                        <Typography variant="h6" sx={{ fontWeight: "bold" }}>
                             Input Settings
                         </Typography>
                         <Box sx={{ display: "flex", alignItems: "center" }}>
@@ -358,15 +382,14 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                                 onDragStart={() => { setExtendInputInfo("") }}
                             >
                                 {taskInfo.filter((task) => allowAv1 || task.input.codec !== "av1").map((task, index) => (
-                                    <>
+                                    <React.Fragment key={task.input.path}>
                                         <SortableFileInput key={task.input.path} data={task.input} index={index} />
-
                                         <Collapse in={extendInputInfo === task.input.path} timeout="auto" unmountOnExit>
                                             <Divider sx={{ mb: 1 }} />
                                             <FileInfoComponent fileInfo={[task.input]} />
                                             <Divider sx={{ mt: 1 }} />
                                         </Collapse>
-                                    </>
+                                    </React.Fragment>
                                 ))}
                             </DragDropProvider>
                             {(extendInputInfo !== "yyytttqqq") && (
@@ -418,11 +441,11 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                         justifyContent: "space-between",
                         alignItems: "center",
                     }}>
-                        <Typography variant="h6" fontWeight="bold">
+                        <Typography variant="h6" sx={{ fontWeight: "bold" }}>
                             Output Settings
                         </Typography>
                         <Typography variant="body2">
-                            Total ETA: {getTotalEta(eta.current, [...taskInfo.filter((task) => allowAv1 || task.input.codec !== "av1").map((task) => ({ input: [task.input], video_br: multiInOne ? multiargs.video_br : task.trans.video_br }))])}
+                            <EtaText eta={taskInfo.reduce((sum, task) => sum + Math.max(task.eta, 0), 0)} title="Total ETA: " />
                         </Typography>
                     </Box>
                     <Box sx={{
@@ -463,6 +486,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                                 flexDirection: "column",
                                 justifyContent: "start",
                                 alignItems: "start",
+                                wordBreak: "break-all",
                                 gap: 1,
                             }}>
                                 <Box sx={{
@@ -470,15 +494,18 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                                     alignItems: "center",
                                     gap: 3,
                                 }}>
-                                    <Typography variant="body1" fontWeight="bold" color="primary">
+                                    <Typography variant="body1" sx={{ fontWeight: "bold", color: "primary" }}>
                                         File
                                     </Typography>
-                                    <GetEta speed={eta.current} data={{ input: taskInfo.map(t => t.input), video_br: multiargs.video_br }} />
+                                    <EtaText eta={multiEta} title="ETA: " />
                                 </Box>
                                 {[
                                     ["Output Path", `${outputDir}${getFileStat(taskInfo[0]?.input.path)}.mp4`],
                                     ["Video Bitrate", `${(Math.min(multiargs.video_br / 1000 / 1000, settingsInfo.max_bitrate_mb)).toFixed(2)} Mbps`],
                                     ["Audio Bitrate", `${(multiargs.audio_br / 1000).toFixed(2)} kbps`],
+                                    ["Pixel Format", multiargs.pix_fmt],
+                                    ["Fix SAR", multiargs.sar_fix === "" ? "No" : multiargs.sar_fix],
+                                    ["Zscale", multiargs.zscale],
                                 ].map(([key, value]) => (
                                     <Typography key={key} variant="body2" sx={{ pl: 2 }}>
                                         <b>{key}:</b> {value}
@@ -486,11 +513,12 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                                 ))}
                             </Box>
                             : taskInfo.filter((task) => allowAv1 || task.input.codec !== "av1").map((task, index) => (
-                                <Box key={index} sx={{
+                                <Box key={task.input.path} sx={{
                                     display: "flex",
                                     flexDirection: "column",
                                     justifyContent: "start",
                                     alignItems: "start",
+                                    wordBreak: "break-all",
                                     gap: 1,
                                     mb: 3,
                                 }}>
@@ -499,15 +527,18 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                                         alignItems: "center",
                                         gap: 3,
                                     }}>
-                                        <Typography variant="body1" fontWeight="bold" color="primary">
+                                        <Typography variant="body1" sx={{ fontWeight: "bold", color: "primary" }}>
                                             File {index + 1}
                                         </Typography>
-                                        <GetEta speed={eta.current} data={{ input: [task.input], video_br: task.trans.video_br }} />
+                                        <EtaText eta={task.eta} title="ETA: " />
                                     </Box>
                                     {[
                                         ["Output Path", `${outputDir}${getFileStat(task.input.path)}.mp4`],
                                         ["Video Bitrate", `${(Math.min(task.trans.video_br / 1000 / 1000, settingsInfo.max_bitrate_mb)).toFixed(2)} Mbps`],
                                         ["Audio Bitrate", `${(task.trans.audio_br / 1000).toFixed(2)} kbps`],
+                                        ["Pixel Format", task.trans.pix_fmt],
+                                        ["Fix SAR", task.trans.sar_fix === "" ? "No" : task.trans.sar_fix],
+                                        ["Zscale", task.trans.zscale],
                                     ].map(([key, value]) => (
                                         <Typography key={key} variant="body2" sx={{ pl: 2 }}>
                                             <b>{key}:</b> {value}
@@ -532,7 +563,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                         alignItems: "center",
                         mb: 3,
                     }}>
-                        <Typography variant="h6" fontWeight="bold">
+                        <Typography variant="h6" sx={{ fontWeight: "bold" }}>
                             Encoder Settings
                         </Typography>
                         <Button
@@ -564,7 +595,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                             alignItems: "center",
                         }}>
                             <Tooltip title="Insert task(s) at the front of the queue." placement="right">
-                                <Typography variant="body1" fontWeight="bold">
+                                <Typography variant="body1" sx={{ fontWeight: "bold" }}>
                                     Priority
                                 </Typography>
                             </Tooltip>
@@ -610,7 +641,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                                 justifyContent: "space-between",
                             }}>
                                 <Tooltip title={description} placement="bottom-start">
-                                    <Typography variant="body1" fontWeight="bold">
+                                    <Typography variant="body1" sx={{ fontWeight: "bold" }}>
                                         {title}
                                     </Typography>
                                 </Tooltip>
@@ -663,14 +694,14 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                                     </Box>
                             ]
                         ] as [string, string, (s: Settings) => React.ReactNode][]).map(([title, description, component]) => (
-                            <Box sx={{
+                            <Box key={title} sx={{
                                 display: "flex",
                                 flexDirection: "column",
                                 width: "100%",
                                 alignItems: "flex-start",
                             }}>
                                 <Tooltip title={description} placement="right">
-                                    <Typography variant="body1" fontWeight="bold">
+                                    <Typography variant="body1" sx={{ fontWeight: "bold" }}>
                                         {title}
                                     </Typography>
                                 </Tooltip>
@@ -683,7 +714,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                             alignItems: "center",
                             width: "100%",
                         }}>
-                            <Typography variant="h6" fontWeight="bold">
+                            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
                                 SVT-AV1 Settings
                             </Typography>
                             <IconButton onClick={() => setExpanded(!expanded)}>
@@ -800,7 +831,7 @@ export default function InsertTask({ org_task, open, onClose, onCancelled }: { o
                                     justifyContent: "space-between",
                                 }}>
                                     <Tooltip title={"Scene change detection."} placement="bottom-start">
-                                        <Typography variant="body1" fontWeight="bold">
+                                        <Typography variant="body1" sx={{ fontWeight: "bold" }}>
                                             scd
                                         </Typography>
                                     </Tooltip>

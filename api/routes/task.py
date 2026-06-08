@@ -6,19 +6,24 @@ import shlex
 import os
 
 from fastapi import APIRouter, Query
+from typing import Optional
 from datetime import timedelta, datetime, timezone
 
 from src.models import (
     ApiRunning,
+    ApiSort,
     ApiWaiting,
     ApiFailed,
     ApiCompleted,
     TaskInfo,
     FileInfo,
+    HistoryTable,
 )
 from src.database import Database as db
 from src.logger import Lg
+from src.eta import ETA
 from routes.file import FileOprations
+from routes.plan import PlanUtils
 
 ENV = os.environ.copy()
 ENV["SVT_LOG"] = "2"
@@ -39,22 +44,26 @@ class TaskOprations:
     )
     _stop_transcoding = False
     _pause = asyncio.Event()
+    _pause_changed = False
 
     @classmethod
     async def init(cls):
         task = None
+        PlanUtils._pause.set()
         cls._pause.set()
+        cls._pause_changed = False
         try:
             while True:
-                await cls._pause.wait()
                 try:
-                    task = await cls.pre_check()
+                    task = await PlanUtils.get_next()
                 except Exception:
                     await asyncio.sleep(3)
                 else:
                     try:
                         cls._running = ApiRunning(
-                            **task.model_dump(exclude={"has_retry", "error"}),
+                            **task.model_dump(
+                                exclude={"has_retry", "error", "sort", "eta"}
+                            ),
                             start_time=datetime.now(timezone.utc),
                         )
                         error = await cls.transcode(task)
@@ -74,28 +83,62 @@ class TaskOprations:
                 min_uid = row[0] if row else None
 
                 task.uid = min_uid - 1 if min_uid is not None else 1
-                await db.insert_task(task)
+                await cls.insert_task(task)
 
-    @staticmethod
-    async def pre_check() -> ApiWaiting:
-        index = 0
-        while True:
-            try:
-                row = await db.fetchone(
-                    f"SELECT * FROM waiting ORDER BY uid LIMIT 1 OFFSET ?;", index
-                )
-                if not row:
-                    break
-                task = await db.fetch_ApiWaiting(row)
-                if not all(f.path.is_file() for f in task.input):
-                    raise Exception
-                task.output.parent.mkdir(parents=True, exist_ok=True)
-                await db.execute("DELETE FROM waiting WHERE uid=?;", task.uid)
-            except Exception:
-                index += 1
+    @classmethod
+    async def insert_task(
+        cls,
+        task: ApiWaiting | TaskInfo,
+        priority: bool = False,
+    ) -> None:
+        if not all(f.path.is_file() for f in task.input):
+            raise Exception("Input file not found.")
+
+        if isinstance(task, ApiWaiting):
+            detail = task
+
+        else:
+            detail = ApiWaiting(
+                **task.model_dump(),
+                sort=0,
+                has_retry=0,
+                eta=await ETA.get_eta_info(file_info=task, quick=True),
+                error=[],
+            )
+
+            if priority:
+                detail.sort = (
+                    (await db.fetchone("SELECT MIN(sort) FROM waiting;"))[0] or 0
+                ) - 1000
             else:
-                return task
-        raise Exception("No task in waiting queue.")
+                detail.sort = (
+                    (await db.fetchone("SELECT MAX(sort) FROM waiting;"))[0] or 0
+                ) + 1000
+
+        uid = (
+            await db.fetchone(
+                f"""
+                INSERT INTO waiting
+                ({'uid, ' if isinstance(task, ApiWaiting) else ''}sort, eta, input, output, args, settings, has_retry, error)
+                VALUES ({str(task.uid) + ', ' if isinstance(task, ApiWaiting) else ''}?, ?, ?, ?, ?, ?, ?, ?)
+                RETURNING uid;
+            """,
+                detail.sort,
+                detail.eta.model_dump_json(),
+                json.dumps(
+                    [f.model_dump(mode="json") for f in detail.input],
+                    ensure_ascii=False,
+                ),
+                str(detail.output.resolve()),
+                detail.args.model_dump_json(),
+                detail.settings.model_dump_json(),
+                detail.has_retry,
+                json.dumps(detail.error, ensure_ascii=False),
+            )
+        )[0]
+
+        if not isinstance(task, ApiWaiting):
+            asyncio.create_task(ETA.eta_update(uid, detail))
 
     @classmethod
     def parse_ffmpeg_time(cls, s: str, default: timedelta) -> timedelta:
@@ -114,9 +157,11 @@ class TaskOprations:
         if (not task.settings.overwrite) and task.output.exists():
             return "Output file already exists and overwrite is disabled."
 
-        video_filters = ["setsar=1"]
+        video_filters = []
         if task.args.sar_fix:
             video_filters.append(task.args.sar_fix)
+        elif task.input[0].width % 2 != 0 or task.input[0].height % 2 != 0:
+            video_filters.append("pad=ceil(iw/2)*2:ceil(ih/2)*2")
         if task.settings.rotate is not None:
             if task.settings.rotate in range(0, 4):
                 video_filters.append(f"transpose={task.settings.rotate}")
@@ -126,6 +171,9 @@ class TaskOprations:
                 video_filters.append("hflip,transpose=2,transpose=2")
             elif task.settings.rotate == 6:
                 video_filters.append("transpose=2,transpose=2")
+        video_filters.append("setsar=1")
+        video_filters.append(task.args.zscale)
+        video_filters.append(f"format={task.args.pix_fmt}")
 
         filter_complex = []
         if len(task.input) > 1:
@@ -167,6 +215,8 @@ class TaskOprations:
             ),
             "-movflags",
             "+faststart",
+            "-pix_fmt",
+            task.args.pix_fmt,
             "-c:a",
             "aac",
             "-b:a",
@@ -190,6 +240,7 @@ class TaskOprations:
         assert cls._running is not None
         total_duration = sum(f.duration for f in cls._running.input)
         while True:
+            # Check if the process has finished or crashed
             if proc.returncode is not None:
                 break
 
@@ -201,7 +252,22 @@ class TaskOprations:
                 task.output.unlink(missing_ok=True)
                 return "Transcoding cancelled by user."
 
-            raw_line = await proc.stdout.readline()
+            # Check if the task is paused or resumed
+            if cls._pause_changed:
+                cls._pause_changed = False
+                if cls._pause.is_set():
+                    psutil.Process(proc.pid).resume()
+                else:
+                    psutil.Process(proc.pid).suspend()
+            await cls._pause.wait()
+
+            # Read progress info
+            try:
+                raw_line = await asyncio.wait_for(proc.stdout.readline(), timeout=0.3)
+            except asyncio.TimeoutError:
+                continue
+
+            # Process progress info
             line = raw_line.decode().strip().split("=")
             if len(line) != 2:
                 continue
@@ -272,7 +338,7 @@ class TaskOprations:
             task.error.append(error)
 
             if task.has_retry <= task.settings.retry:
-                await db.insert_task(task)
+                await cls.insert_task(task)
             else:
                 await db.execute(
                     "INSERT INTO failed (input, output, args, settings, error) VALUES (?, ?, ?, ?, ?);",
@@ -287,7 +353,11 @@ class TaskOprations:
                 )
         else:
             await db.execute(
-                "INSERT INTO completed (input, output, total_consumed, finished_time) VALUES (?, ?, ?, ?);",
+                """
+                    INSERT INTO completed 
+                    (input, output, total_consumed, finished_time) 
+                    VALUES (?, ?, ?, ?);
+                """,
                 json.dumps(
                     [f.model_dump(mode="json") for f in task.input], ensure_ascii=False
                 ),
@@ -295,6 +365,24 @@ class TaskOprations:
                 str(datetime.now(timezone.utc) - cls._running.start_time).split(".")[0],
                 datetime.now().isoformat(),
             )
+
+            sta_data = HistoryTable(
+                total_consumed=int(
+                    (
+                        datetime.now(timezone.utc) - cls._running.start_time
+                    ).total_seconds()
+                ),
+                **task.eta.model_dump(),
+            ).model_dump(exclude={"uid"})
+            await db.execute(
+                f"""
+                    INSERT INTO history
+                    ({", ".join(sta_data.keys())})
+                    VALUES ({", ".join("?" * len(sta_data))});
+                """,
+                *sta_data.values(),
+            )
+
             if task.settings.delete_source:
                 for f in task.input:
                     try:
@@ -322,6 +410,7 @@ class TaskOprations:
 task_router = APIRouter(prefix="/task", tags=["task"])
 
 
+# Running
 @task_router.get("/running", response_model=ApiRunning | None)
 async def get_progress():
     return await TaskOprations.progress()
@@ -331,7 +420,23 @@ async def get_progress():
 async def stop_transcoding():
     TaskOprations._stop_transcoding = True
 
+@task_router.get("/running/pause", response_model=bool)
+async def is_pause_transcoding():
+    return TaskOprations._pause.is_set()
 
+@task_router.post("/running/pause", response_model=bool)
+async def pause_transcoding(
+    set: bool = Query(description="Whether to pause or resume transcoding, if not provided, it will toggle the current state")
+):
+    TaskOprations._pause_changed = True
+    if set:
+        TaskOprations._pause.set()
+    else:
+        TaskOprations._pause.clear()
+    return TaskOprations._pause.is_set()
+
+
+# Waiting
 @task_router.post("/submit", response_model=None)
 async def submit_task(
     task: TaskInfo,
@@ -354,30 +459,42 @@ async def submit_task(
             task.uid,
         )
     else:
-        await db.insert_task(task, priority=priority)
-
-
-@task_router.post("/movetop", response_model=None)
-async def move_to_top(
-    uid: int = Query(description="The uid of the waiting task to move to top"),
-):
-    await db.execute(
-        """
-        UPDATE waiting
-        SET uid = COALESCE((SELECT MIN(uid) - 1 FROM waiting), 1)
-        WHERE uid = ?;
-        """,
-        uid,
-    )
+        await TaskOprations.insert_task(task, priority=priority)
 
 
 @task_router.get("/waiting", response_model=list[ApiWaiting])
 async def get_waiting():
-    tasks = []
+    tasks: list[ApiWaiting] = []
     rows = await db.fetch("SELECT * FROM waiting;")
     for row in rows:
         tasks.append(await db.fetch_ApiWaiting(row))
-    return tasks
+    return sorted(tasks, key=lambda t: t.sort)
+
+
+@task_router.post("/waiting/sort", response_model=None)
+async def sort_waiting(data: ApiSort):
+    if data.last:
+        last = (await db.fetchone("SELECT sort FROM waiting WHERE uid=?;", data.last))[
+            0
+        ]
+    else:
+        last = 0
+    if data.next:
+        next = (await db.fetchone("SELECT sort FROM waiting WHERE uid=?;", data.next))[
+            0
+        ]
+    else:
+        next = ((await db.fetchone("SELECT MAX(sort) FROM waiting;"))[0] or 0) + 2000
+
+    await db.execute(
+        """
+        UPDATE waiting
+        SET sort = ?
+        WHERE uid = ?;
+        """,
+        (last + next) / 2,
+        data.uid,
+    )
 
 
 @task_router.get("/waiting/delete", response_model=None)
@@ -387,9 +504,10 @@ async def delete_waiting(
     await db.execute("DELETE FROM waiting WHERE uid=?;", uid)
 
 
+# Failed
 @task_router.get("/failed", response_model=list[ApiFailed])
 async def get_failed():
-    tasks = []
+    tasks: list[ApiFailed] = []
     rows = await db.fetch("SELECT * FROM failed;")
     for row in rows:
         tasks.append(
@@ -402,16 +520,22 @@ async def get_failed():
     return tasks
 
 
-@task_router.get("/failed/delete", response_model=None)
+@task_router.post("/failed/delete", response_model=None)
 async def retry_task(
     uid: int = Query(..., description="The uid of the failed task to delete")
 ):
     await db.execute("DELETE FROM failed WHERE uid=?;", uid)
 
 
+@task_router.post("/failed/clear", response_model=None)
+async def clear_failed():
+    await db.execute("DELETE FROM failed;")
+
+
+# Completed
 @task_router.get("/completed", response_model=list[ApiCompleted])
 async def get_completed():
-    tasks = []
+    tasks: list[ApiCompleted] = []
     rows = await db.fetch("SELECT * FROM completed;")
     for row in rows:
         tasks.append(
@@ -427,49 +551,19 @@ async def get_completed():
 
 @task_router.post("/completed/clear", response_model=None)
 async def clear_completed():
-    num = (await db.fetchone("SELECT COUNT(*) FROM completed;"))[0]
-    if num <= 8:
-        await db.execute("DELETE FROM completed;")
-    else:
-        await db.execute(
-            """
-            DELETE FROM completed
-            WHERE rowid NOT IN (
-                SELECT rowid FROM completed
-                ORDER BY finished_time DESC
-                LIMIT 8
-            );
-            """,
-        )
+    await db.execute("DELETE FROM completed;")
 
-
+# Transcode cron Status
 @task_router.post("/status", response_model=None)
-async def pause_transcoding(
+async def pause_next_transcoding(
     set: bool = Query(..., description="Whether to pause or resume transcoding")
 ):
     if set:
-        TaskOprations._pause.set()
+        PlanUtils._pause.set()
     else:
-        TaskOprations._pause.clear()
+        PlanUtils._pause.clear()
 
 
 @task_router.get("/status", response_model=bool)
 async def get_status():
-    return TaskOprations._pause.is_set()
-
-
-@task_router.get("/eta", response_model=float)
-async def get_eta():
-    predict = 0.0
-    rows = await db.fetch("SELECT * FROM completed;")
-
-    for row in rows:
-        data = FileInfo.model_validate_json(row["output"])
-        total_consumed = (
-            float(row["total_consumed"].split(":")[0]) * 3600
-            + float(row["total_consumed"].split(":")[1]) * 60
-            + float(row["total_consumed"].split(":")[2])
-        )
-        predict += data.duration * data.bit_rate / total_consumed
-
-    return predict / len(rows) if len(rows) > 0 else 0.0
+    return PlanUtils._pause.is_set()

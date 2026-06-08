@@ -18,7 +18,7 @@ export const useErrorMsg = create<ErrorMsgState>((set, get) => ({
     open: true,
 
     pushMsg: (text, level = "error") => {
-        if (!open) return;
+        if (!get().open) return;
         const id = Date.now() + Math.random().toString(16).slice(2);
         set((state) => ({
             msg: [...state.msg, { id, text, level }],
@@ -29,7 +29,6 @@ export const useErrorMsg = create<ErrorMsgState>((set, get) => ({
         let text = "";
 
         try {
-            // 1️⃣ HTTPError（有后端返回）
             if (error instanceof HTTPError) {
                 try {
                     const res = await error.response.json();
@@ -40,19 +39,23 @@ export const useErrorMsg = create<ErrorMsgState>((set, get) => ({
                     text = await error.response.text();
                 }
             }
-            // 2️⃣ 标准 Error
             else if (error instanceof Error) {
-                text = error.message;
+                if (error.name === "TypeError") {
+                    text = "Network request failed (possibly offline or CORS issue)";
+                } else if (error.name === "AbortError") {
+                    text = "Request aborted";
+                } else {
+                    text = error.message;
+                }
             }
-            // 3️⃣ 其他类型
             else {
                 text = String(error);
             }
         } catch {
-            text = "未知错误";
+            text = "Unknown error";
         }
 
-        const finalText = prefix ? `${prefix}: ${text}` : text;
+        const finalText = prefix ? `${prefix.endsWith(":") ? prefix : `${prefix}:`} ${text}` : text;
         get().pushMsg(finalText, "error");
     },
 
@@ -62,11 +65,11 @@ export const useErrorMsg = create<ErrorMsgState>((set, get) => ({
         }));
     },
 
-    setOpen: (open) => {
-        if (!open) {
+    setOpen: (state) => {
+        if (!get().open && state) {
             set({ msg: [] });
         }
-        set({ open });
+        set({ open: state });
     },
 }));
 

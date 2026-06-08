@@ -2,6 +2,7 @@ import asyncio
 import json
 import shlex
 
+from typing import Literal
 from fastapi import APIRouter, HTTPException, Query
 from pathlib import Path
 
@@ -11,24 +12,157 @@ from src.logger import Lg
 
 class FileOprations:
 
-    @staticmethod
-    def check_sar(sar: str) -> str:
-        if not sar in ["N/A", "1:1"]:
-            try:
-                sar_w, sar_h = map(float, sar.split(":"))
-                return f"scale=trunc(iw*{sar_w/sar_h}/2)*2:trunc(ih/2)*2"
-            except Exception:
-                return ""
-        return ""
+    pix_fmt_map = {
+        420: {
+            8: "yuv420p",
+            10: "yuv420p10le",
+            12: "yuv420p12le",
+            14: "yuv420p14le",
+            16: "yuv420p16le",
+        },
+        422: {
+            8: "yuv422p",
+            10: "yuv422p10le",
+            12: "yuv422p12le",
+            14: "yuv422p14le",
+            16: "yuv422p16le",
+        },
+        444: {
+            8: "yuv444p",
+            10: "yuv444p10le",
+            12: "yuv444p12le",
+            14: "yuv444p14le",
+            16: "yuv444p16le",
+        },
+    }
 
     @staticmethod
-    async def fetch_file_info(path: Path) -> FileInfo:
+    def _check_sar(sar: str) -> str:
+        if not sar in ["N/A", "1:1"]:
+            sar_w, sar_h = map(float, sar.split(":"))
+            return f"scale=trunc(iw*{sar_w/sar_h}/2)*2:trunc(ih/2)*2"
+        return ""
+
+    @classmethod
+    def _check_zscale(cls, cs: str, ct: str, cp: str, pf: str) -> str:
+        cmd = "zscale="
+        hdr = cls._check_hdr(ct)
+
+        if not any(x in pf for x in ["rgb", "gbr", "bgr"]):
+            if any(x in cs for x in ["rgb", "gbr", "bgr"]):
+                cmd += f"matrixin={'bt2020nc' if hdr else 'bt709'}:"
+
+        if cs == "":
+            cmd += f"matrixin={'bt2020nc' if hdr else 'bt709'}:"
+        if ct == "":
+            cmd += f"transferin={'smpte2084' if hdr else 'bt709'}:"
+        if cp == "":
+            cmd += f"primariesin={'bt2020' if hdr else 'bt709'}:"
+
+        if hdr:
+            cmd += (
+                "matrix=bt2020nc:transfer=smpte2084:primaries=bt2020:range=tv:npl=1000"
+            )
+
+        else:
+            cmd += "matrix=bt709:transfer=bt709:primaries=bt709:range=tv"
+
+        return cmd
+
+    @staticmethod
+    def _check_fmt_bit(pix_fmt: str) -> Literal[8, 10, 12, 14, 16]:
+        fmt = pix_fmt.lower()
+
+        # Direct explicit match (fast path)
+        if "16le" in fmt or "16be" in fmt:
+            return 16
+        if "12le" in fmt or "12be" in fmt:
+            return 12
+        if "10le" in fmt or "10be" in fmt:
+            return 10
+
+        # Common explicit patterns
+        if "p16" in fmt:
+            return 16
+        if "p12" in fmt:
+            return 12
+        if "p10" in fmt:
+            return 10
+        if "p8" in fmt:
+            return 8
+
+        # Packed hardware formats
+        hw_map = {
+            "nv12": 8,
+            "yuyv422": 8,
+            "uyvy422": 8,
+            "yuvj420p": 8,
+            "yuvj422p": 8,
+            "yuvj444p": 8,
+            "bgr0": 8,
+            "rgb0": 8,
+            "p010le": 10,
+            "p016le": 16,
+            "p012le": 12,
+            "p210le": 10,
+            "p216le": 16,
+        }
+        if fmt in hw_map:
+            return hw_map[fmt]  # type: ignore
+
+        # Common suffix patterns
+        if any(x in fmt for x in ["yuv", "rgb", "bgr", "pal"]):
+            return 8
+
+        return 8
+
+    @staticmethod
+    def _check_fmt_chroma(pix_fmt: str) -> Literal[420, 422, 444]:
+        fmt = pix_fmt.lower()
+
+        # Direct explicit match (fast path)
+        if "420" in fmt:
+            return 420
+        if "422" in fmt:
+            return 422
+        if "444" in fmt:
+            return 444
+
+        # Common explicit patterns
+        if fmt in ["nv12", "nv21", "p010le", "p016le", "p012le"]:
+            return 420
+        if fmt in ["p210le", "p216le"]:
+            return 422
+        if any(x in fmt for x in ["gbr", "rgb", "bgr"]):
+            return 444
+
+        return 420
+
+    @staticmethod
+    def _check_hdr(color_transfer: str) -> bool:
+        ct = color_transfer.lower()
+
+        hdr_transfer = {
+            "smpte2084",  # PQ (HDR10 / HDR10+)
+            "arib-std-b67",  # HLG
+            "smpte428",  # Cineon (罕见 HDR/DI)
+        }
+        if ct in hdr_transfer:
+            return True
+
+        if "pq" in ct or "hlg" in ct:
+            return True
+
+        return False
+
+    @classmethod
+    async def fetch_file_info(cls, path: Path) -> FileInfo:
         cmd = [
             "ffprobe",
             "-v",
             "error",
             "-show_entries",
-            "stream=codec_type,codec_name,width,height,avg_frame_rate,sample_aspect_ratio,bit_rate,duration",
+            "stream=codec_type,codec_name,width,height,avg_frame_rate,sample_aspect_ratio,bit_rate,duration,pix_fmt,color_space,color_transfer,color_primaries",
             "-of",
             "json",
             str(path.resolve()),
@@ -68,6 +202,10 @@ class FileOprations:
             width=int(video.get("width", 0)),
             height=int(video.get("height", 0)),
             sar=video.get("sample_aspect_ratio", "N/A"),
+            pix_fmt=video.get("pix_fmt", "yuv420p"),
+            color_space=video.get("color_space", ""),
+            color_transfer=video.get("color_transfer", ""),
+            color_primaries=video.get("color_primaries", ""),
             frame_rate=(
                 lambda x: (
                     round(float(x[0]) / float(x[1]), 1) if float(x[1]) != 0 else 0.0
@@ -86,30 +224,54 @@ class FileOprations:
             ),
         )
 
-    @staticmethod
-    async def fetch_transcode_info(org: FileInfo) -> TranscodeInfo:
+    @classmethod
+    async def fetch_transcode_info(cls, org: FileInfo) -> TranscodeInfo:
         avg_br = round(org.size * 8 / org.duration - org.audio_bit_rate)
         v_br = org.bit_rate if abs(org.bit_rate - avg_br) / avg_br <= 0.13 else avg_br
 
         return TranscodeInfo(
+            zscale=cls._check_zscale(
+                org.color_space,
+                org.color_transfer,
+                org.color_primaries,
+                org.pix_fmt,
+            ),
+            pix_fmt=cls.pix_fmt_map[cls._check_fmt_chroma(org.pix_fmt)][
+                cls._check_fmt_bit(org.pix_fmt)
+            ],
             video_br=round(v_br * Codec[org.codec]),
             audio_br=org.audio_bit_rate,
-            sar_fix=FileOprations.check_sar(org.sar),
+            sar_fix=cls._check_sar(org.sar),
         )
 
-    @staticmethod
+    @classmethod
     async def fetch_multinput(
+        cls,
         infos: list[FileInfo],
     ) -> TranscodeInfo:
 
         if not all(
-            (f.width, f.height, f.frame_rate, f.sar, f.codec)
+            (
+                f.width,
+                f.height,
+                f.frame_rate,
+                f.sar,
+                f.codec,
+                f.color_space,
+                f.color_transfer,
+                f.color_primaries,
+                f.pix_fmt,
+            )
             == (
                 infos[0].width,
                 infos[0].height,
                 infos[0].frame_rate,
                 infos[0].sar,
                 infos[0].codec,
+                infos[0].color_space,
+                infos[0].color_transfer,
+                infos[0].color_primaries,
+                infos[0].pix_fmt,
             )
             for f in infos
         ):
@@ -125,9 +287,18 @@ class FileOprations:
         v_br = max_br if abs(max_br - avg_br) / avg_br <= 0.15 else avg_br
 
         return TranscodeInfo(
+            zscale=cls._check_zscale(
+                infos[0].color_space,
+                infos[0].color_transfer,
+                infos[0].color_primaries,
+                infos[0].pix_fmt,
+            ),
+            pix_fmt=cls.pix_fmt_map[cls._check_fmt_chroma(infos[0].pix_fmt)][
+                cls._check_fmt_bit(infos[0].pix_fmt)
+            ],
             video_br=round(v_br * Codec[infos[0].codec]),
             audio_br=max(f.audio_bit_rate for f in infos),
-            sar_fix=FileOprations.check_sar(infos[0].sar),
+            sar_fix=cls._check_sar(infos[0].sar),
         )
 
 
