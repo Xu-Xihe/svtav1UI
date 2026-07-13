@@ -3,6 +3,7 @@ import { Box, Typography } from "@mui/material";
 import React from "react";
 
 import type { FileInfo, TaskInfo } from "../hooks/model";
+import { Language } from "../hooks/model";
 import { Rotate } from "../hooks/model";
 
 
@@ -55,59 +56,64 @@ export function FileInfoComponent({ fileInfo }: { fileInfo: FileInfo[] }) {
     );
 }
 
-export function TaskInfoComponent({ taskInfo }: { taskInfo: TaskInfo }) {
+export function TaskInfoComponent({ task }: { task: TaskInfo }) {
+    const info: Record<string, [string, any][]> = {
+        "Task Info": [
+            ["UID", task.uid],
+            ["Output", task.output],
+        ],
+        "Args": [
+            ["Video Bit Rate", `${(task.args.video_br / 1000 / 1000).toFixed(2)} Mbps`],
+            ["Audio Bit Rate", `${(task.args.audio_br / 1000).toFixed(2)} kbps`],
+            ["Pixel Format", task.args.pix_fmt],
+            ["SAR Fix", task.args.sar_fix === "" ? "No" : task.args.sar_fix],
+            ["Zscale", task.args.zscale],
+            ["Rotate", task.args.rotate ? Rotate[task.args.rotate] : "N/A"],
+        ],
+        "Subtitle": [
+            ["Original Language", task.args.subtitle ? Language[task.args.subtitle] : "N/A"],
+            ["Translation Language", task.args.tran ? Language[task.args.tran] : "N/A"],
+            ["Translate Inmediately", task.args.tran_inmediate ? "Yes" : "No"],
+        ],
+        "System Settings": [
+            ["Overwrite", task.settings.overwrite ? "Yes" : "No"],
+            ["Delete Source", task.settings.delete_source ? "Yes" : "No"],
+        ]
+    }
+
+    function InfoBlock({ title, items }: { title: string, items: [string, any][] }) {
+        return (
+            <>
+                <Typography>
+                    <b>{title}:</b>
+                </Typography>
+                {items.map(([key, value]) => (
+                    <Typography key={key} sx={{
+                        overflowWrap: "anywhere",
+                        wordBreak: "break-all",
+                        pl: 3,
+                    }}>
+                        <b>{key}:</b> {value}
+                    </Typography>
+                ))}
+            </>
+        );
+    }
+
+
     return (
-        <>
-            <Box sx={{
-                display: "flex",
-                flexDirection: "column",
-                alignContent: "start",
-                justifyContent: "start",
-                wordWrap: "break-word",
-                gap: 1,
-            }}>
-                {[
-                    ["UID", taskInfo.uid],
-                    ["Output", taskInfo.output],
-                ].map(([key, value]) => (
-                    <Typography key={key} sx={{
-                        overflowWrap: "break-word",
-                        wordBreak: "break-word",
-                    }}>
-                        <b>{key}:</b> {value}
-                    </Typography>
-                ))}
-                <Typography>
-                    <b>Args:</b>
-                </Typography>
-                {[
-                    ["Video Bit Rate", `${(taskInfo.args.video_br / 1000 / 1000).toFixed(2)} Mbps`],
-                    ["Audio Bit Rate", `${(taskInfo.args.audio_br / 1000).toFixed(2)} kbps`],
-                    ["Pixel Format", taskInfo.args.pix_fmt],
-                    ["SAR Fix", taskInfo.args.sar_fix === "" ? "No" : taskInfo.args.sar_fix],
-                    ["Zscale", taskInfo.args.zscale],
-                ].map(([key, value]) => (
-                    <Typography key={key} sx={{
-                        pl: 2,
-                        overflowWrap: "break-word",
-                        wordBreak: "break-word",
-                    }}>
-                        <b>{key}:</b> {value}
-                    </Typography>
-                ))}
-                <Typography>
-                    <b>Settings:</b>
-                </Typography>
-                {[
-                    ["Overwrite", taskInfo.settings.overwrite ? "Yes" : "No"],
-                    ["Delete Source", taskInfo.settings.delete_source ? "Yes" : "No"],
-                    ["Rotate", taskInfo.settings.rotate === null ? "No" : Rotate[taskInfo.settings.rotate]],
-                ].map(([key, value]) => (
-                    <Typography key={key} sx={{ pl: 2 }}>
-                        <b>{key}:</b> {value}
-                    </Typography>
-                ))}
-            </Box>
-        </>
+        <Box sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignContent: "start",
+            justifyContent: "start",
+            wordWrap: "break-word",
+            gap: 1,
+        }}>
+            <InfoBlock title="Task Info" items={info["Task Info"]} />
+            {task.args.video_br > 0 && <InfoBlock title="Args" items={info["Args"]} />}
+            {task.args.subtitle && <InfoBlock title="Subtitle" items={info["Subtitle"]} />}
+            {task.args.video_br > 0 && <InfoBlock title="System Settings" items={info["System Settings"]} />}
+        </Box>
     );
 }

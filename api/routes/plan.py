@@ -1,6 +1,4 @@
-import asyncio
-
-from fastapi import APIRouter, Query
+from fastapi import APIRouter
 from datetime import datetime, timezone
 from bitarray import bitarray
 
@@ -17,23 +15,21 @@ class PlanTask(ApiWaiting):
 
 
 class PlanUtils:
-    _pause = asyncio.Event()
     _sta = TaskSchedule(finish_time=datetime.now(timezone.utc))
 
     @classmethod
-    async def get_next(cls) -> ApiWaiting:
-        await cls._pause.wait()
-
-        if ETA.model is None:
-            await ETA.train_model()
-
+    async def get_next(cls) -> ApiWaiting | None | bool:
         if cls._sta.on:
+
+            if ETA.model is None:
+                await ETA.train_model()
+
             tasks: list[PlanTask] = []
-            rows = await db.fetch("SELECT * FROM waiting;")
+            rows = db.fetchall("SELECT * FROM waiting;")
             if not rows:
                 raise Exception("No task in waiting queue.")
             for row in rows:
-                task = await db.fetch_ApiWaiting(row)
+                task = db.fetch_ApiWaiting(row)
                 if all(f.path.is_file() for f in task.input):
                     if cls._sta.weight == "size":
                         tasks.append(
@@ -87,7 +83,6 @@ class PlanUtils:
                     return rtn
                 else:
                     cls._sta.on = False
-                    cls._pause.clear()
                     raise Exception("No task can be scheduled within the time.")
             else:
                 if cls._sta.sort == "longest":
@@ -101,36 +96,38 @@ class PlanUtils:
             return await cls._fetch_first()
 
     @staticmethod
-    async def _fetch_first() -> ApiWaiting:
+    async def _fetch_first() -> ApiWaiting | None:
         index = 0
         while True:
-            try:
-                row = await db.fetchone(
-                    f"""
+            row = db.fetchone(
+                f"""
                         SELECT * FROM waiting 
                         ORDER BY sort
                         LIMIT 1 OFFSET ?;
                     """,
-                    index,
-                )
-                if not row:
-                    break
-                task = await db.fetch_ApiWaiting(row)
-                if not all(f.path.is_file() for f in task.input):
-                    raise Exception
-                task.output.parent.mkdir(parents=True, exist_ok=True)
-                await db.execute("DELETE FROM waiting WHERE uid=?;", task.uid)
-            except Exception:
+                index,
+            )
+
+            if not row:
+                return None
+
+            task = db.fetch_ApiWaiting(row)
+
+            if (not all(f.path.is_file() for f in task.input)) or (
+                not task.output.parent.is_dir()
+            ):
                 index += 1
-            else:
-                return task
-        raise Exception("No task in waiting queue.")
+                continue
+
+            db.execute("DELETE FROM waiting WHERE uid=?;", task.uid)
+            Lg.debug(f"Task fetched from waiting queue: {task.model_dump()}.")
+            return task
 
 
 @plan_router.post("/eta")
-async def get_eta(data: TaskInfo | FileETAInfo, quick: bool = Query(True)) -> int:
+async def get_eta(data: TaskInfo | FileETAInfo) -> int:
     if isinstance(data, TaskInfo):
-        eta_info = await ETA.get_eta_info(file_info=data, quick=quick)
+        eta_info = await ETA.get_eta_info(file_info=data)
     else:
         eta_info = data
     return await ETA.get_eta(eta_info)

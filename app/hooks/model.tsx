@@ -1,3 +1,23 @@
+export const Language = {
+    en: "English",
+    ja: "Japanese",
+    zh: "Chinese",
+    "zh-CN": "Chinese (Simplified)",
+    "zh-TW": "Chinese (Traditional)",
+    ko: "Korean",
+    fr: "French",
+    de: "German",
+    es: "Spanish",
+    it: "Italian",
+    ru: "Russian",
+    pt: "Portuguese",
+    ar: "Arabic",
+    th: "Thai",
+    vi: "Vietnamese"
+};
+export type LanguageKey = keyof typeof Language;
+export type LanguageValue = typeof Language[LanguageKey];
+
 export interface FileInfo {
     path: string;
     size: number;
@@ -15,16 +35,15 @@ export interface FileInfo {
     audio_bit_rate: number;
 }
 
-export interface Settings {
-    vca_on: boolean;
+export interface GeneralSettings {
+    // General Settings
     overwrite: boolean;
     delete_source: boolean;
-    preset: number;
-    rotate: number | null;
     retry: number;
 
+    // Transcoder Settings
+    preset: number;
     max_bitrate_mb: number;
-
     overshoot_pct: number;
     undershoot_pct: number;
     minsection_pct: number;
@@ -34,12 +53,35 @@ export interface Settings {
     scd: boolean;
 }
 
+export interface TranslatorSettings {
+    // whisper settings
+    voice_speech_duration: number
+    voice_minimum_silence_duration: number
+    voice_threshold: number
+    voice_temperature: number
+    max_length_segment: number
+    asr_model: string | null
+    vad_model: string | null
+
+    // llm settings
+    llm_type: "openai-api" | "llama.cpp" | "mlx"
+    llm_key: string | null
+    max_tokens: number
+    max_input: number
+    prompt: Object[]
+    temperature: number
+}
+
 export interface TranscodeInfo {
     pix_fmt: string;
     zscale: string;
     sar_fix: string;
     video_br: number;
     audio_br: number;
+    rotate?: number | null;
+    subtitle?: LanguageKey | null;
+    tran?: LanguageKey | null;
+    tran_inmediate?: boolean | null;
 }
 
 export interface TaskInfo {
@@ -47,7 +89,15 @@ export interface TaskInfo {
     input: FileInfo[];
     output: string;
     args: TranscodeInfo;
-    settings: Settings;
+    settings: GeneralSettings;
+}
+
+export interface LLMTaskInfo {
+    uid?: number;
+    input: string;
+    output: string;
+    org_lang: LanguageKey;
+    tran_lang: LanguageKey;
 }
 
 export const Rotate = [
@@ -71,22 +121,50 @@ export interface TaskSchedule {
 export interface FileETAInfo {
     codec: number;
     pixel_count: number;
-    pixels_per_second: number;
     frame_count: number;
+    subtitle: boolean;
 
     preset: number;
     target_bit_rate: number;
     lookahead: number;
     keyint: number; // frame count
     scd: boolean;
+}
 
-    E_mean?: number;
-    E_p95?: number;
-    E_diff_mean?: Number;
+export interface ApiRunning extends TaskInfo {
+    org_lang?: LanguageKey;
+    tran_lang?: LanguageKey;
 
-    h_mean?: number;
-    h_diff_mean?: number;
+    state: "audio_prefix" | "transcode" | "whisper" | "llm_gen"
+    cpu_usage: number;
+    ram_usage: number;
 
-    epsilon_mean?: number;
-    epsilon_diff_mean?: number;
+    start_time: string;
+    consumed_time: string
+
+    frame: number
+    fps: number
+    qp: number
+    bitrate: string
+    size: string
+    completed_time: string
+    dup_frames: number
+    drop_frames: number
+    speed: number
+    progress: number
+    eta: string
+
+    log: string[]
+}
+
+export interface ApiPath {
+    dir: string[]
+    file: string[]
+}
+
+export interface Taskls {
+    input: FileInfo
+    output: string
+    trans: TranscodeInfo
+    eta: number
 }

@@ -23,10 +23,17 @@ import { useEffect, useState } from 'react';
 import { useErrorMsg } from "../components/error_popout";
 import { getLocalStorage } from "../hooks/storage";
 import { api } from "../hooks/api";
-import type { TaskInfo } from "../hooks/model";
-import InsertTask from '../components/insert_task';
+import type { FileInfo, GeneralSettings, TranscodeInfo } from "../hooks/model";
+import InsertTaskDialog from '~/components/insert';
+import InsertLLMTaskDialog from '~/components/insert/llm_index';
+import { NoContent } from "../components/no_content";
 
-interface ApiFailed extends TaskInfo {
+interface ApiFailed {
+    uid: number;
+    input: FileInfo[] | string;
+    output: string;
+    args: TranscodeInfo;
+    settings: GeneralSettings | null;
     error: string[]
 }
 
@@ -46,39 +53,20 @@ export default function Failed() {
     }
 
     const deleteItem = (uid: number) => {
-        if (!uid) {
-            pushMsg("Invalid task UID.");
-            return;
-        }
+        if (!uid) { pushMsg("Invalid task UID."); return; }
         api.post(`${apiUrl}/task/failed/delete`, { searchParams: { uid } })
-            .then(() => {
-                fetchls();
-            })
+            .then(() => { fetchls(); })
             .catch(error => pushError(error, "Delete failed task"));
     }
 
-    useEffect(() => {
-        fetchls();
-    }, [])
+    useEffect(() => { fetchls(); }, [])
 
-    if (failedInfo.length === 0) {
-        return (
-            <Box sx={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "100%",
-                width: "100%",
-            }}>
-                <Typography variant="h6">No failed tasks</Typography>
-            </Box>
-        );
-    }
+    if (failedInfo.length === 0) { return (<NoContent title="failed" />); }
 
     return (
         <>
             <Dialog open={clearConfirmOpen} onClose={() => setClearConfirmOpen(false)} >
-                <DialogTitle>Are you sure to clear the completed tasks list?</DialogTitle>
+                <DialogTitle>Are you sure to clear the failed tasks list?</DialogTitle>
                 <DialogActions>
                     <Button onClick={() => setClearConfirmOpen(false)} variant='outlined'>Cancel</Button>
                     <Button
@@ -91,23 +79,40 @@ export default function Failed() {
                             setClearConfirmOpen(false);
                         }}
                         variant='contained'>
-                        Apply
+                        Clear
                     </Button>
                 </DialogActions>
             </Dialog>
-            {insertTask &&
-                <InsertTask
-                    open
-                    org_task={insertTask}
-                    onClose={() => {
-                        insertTask?.uid
-                            ? deleteItem(insertTask.uid)
-                            : pushMsg("Delete task failed.");
-                        setInsertTask(null);
-                        fetchls();
-                    }}
-                    onCancelled={() => setInsertTask(null)}
-                />}
+            {insertTask && (
+                typeof insertTask.input === "string"
+                    ? <InsertLLMTaskDialog
+                        retry_task={{
+                            input: insertTask.input,
+                            output: insertTask.output,
+                            org_lang: insertTask.args.subtitle!,
+                            tran_lang: insertTask.args.tran!,
+                        }}
+                        onClose={() => {
+                            insertTask?.uid
+                                ? deleteItem(insertTask.uid)
+                                : pushMsg("Delete task failed.");
+                            setInsertTask(null);
+                            fetchls();
+                        }}
+                        onCancel={() => setInsertTask(null)}
+                    />
+                    : <InsertTaskDialog
+                        retry_task={insertTask}
+                        onClose={() => {
+                            insertTask?.uid
+                                ? deleteItem(insertTask.uid)
+                                : pushMsg("Delete task failed.");
+                            setInsertTask(null);
+                            fetchls();
+                        }}
+                        onCancel={() => setInsertTask(null)}
+                    />
+            )}
             <Dialog
                 open={errorDialog !== -1}
                 onClose={() => setErrorDialog(-1)}
@@ -153,7 +158,7 @@ export default function Failed() {
                             <TableRow>
                                 <TableCell>Input</TableCell>
                                 <TableCell>Output</TableCell>
-                                <TableCell>
+                                <TableCell sx={{ width: 163 }}>
                                     <Button
                                         variant="contained"
                                         color="primary"
@@ -167,7 +172,10 @@ export default function Failed() {
                         <TableBody>
                             {failedInfo.map((task, index) => (
                                 <TableRow key={index}>
-                                    <TableCell>{task.input.map(file => file.path.split("/").slice(-1)[0]).join(", ")}</TableCell>
+                                    {typeof task.input === "object"
+                                        ? <TableCell>{task.input.map(file => file.path.split("/").slice(-1)[0]).join(", ")}</TableCell>
+                                        : <TableCell>{task.input}</TableCell>
+                                    }
                                     <TableCell>{task.output}</TableCell>
                                     <TableCell sx={{ gap: 1 }}>
                                         <IconButton onClick={() => { setErrorDialog(index) }}>

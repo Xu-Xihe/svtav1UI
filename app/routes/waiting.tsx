@@ -8,7 +8,6 @@ import {
     TableHead,
     TableRow,
     Collapse,
-    Button,
     IconButton,
     Tooltip,
     Switch,
@@ -30,6 +29,7 @@ import { FileInfoComponent, TaskInfoComponent } from "../components/info";
 import { api } from "../hooks/api";
 import type { TaskInfo, FileETAInfo } from "../hooks/model";
 import { EtaText, getEta } from "../hooks/eta";
+import { NoContent } from "../components/no_content";
 
 interface ApiWaiting extends TaskInfo {
     has_retry: number
@@ -192,19 +192,7 @@ export default function Waiting() {
     }
 
 
-    if (waitingInfo.length === 0) {
-        return (
-            <Box sx={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "100%",
-                width: "100%",
-            }}>
-                <Typography variant="h6">No waiting tasks</Typography>
-            </Box>
-        );
-    }
+    if (waitingInfo.length === 0) { return (<NoContent title="waiting" />); }
 
     return (
         <Box sx={{
@@ -286,7 +274,7 @@ export default function Waiting() {
                                                         <Typography variant="h5" gutterBottom>
                                                             Output Info
                                                         </Typography>
-                                                        <TaskInfoComponent taskInfo={task} />
+                                                        <TaskInfoComponent task={task} />
                                                     </Box>
                                                     <Box sx={{
                                                         display: "flex",

@@ -12,8 +12,6 @@ import {
     IconButton,
     Dialog,
     DialogTitle,
-    DialogContent,
-    DialogContentText,
     DialogActions,
 } from '@mui/material';
 import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded';
@@ -27,6 +25,7 @@ import { getLocalStorage } from "../hooks/storage";
 import { FileInfoComponent } from "../components/info";
 import { api } from "../hooks/api";
 import type { FileInfo } from '../hooks/model';
+import { NoContent } from '~/components/no_content';
 
 
 interface ApiCompleted {
@@ -60,24 +59,10 @@ export default function Completed() {
             .catch(error => pushError(error, "Clear completed tasks"));
     }
 
-    useEffect(() => {
-        fetchls();
-    }, [])
+    useEffect(() => { fetchls(); }, [])
 
 
-    if (completedInfo.length === 0) {
-        return (
-            <Box sx={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "100%",
-                width: "100%",
-            }}>
-                <Typography variant="h6">No completed tasks</Typography>
-            </Box>
-        );
-    }
+    if (completedInfo.length === 0) { return (<NoContent title="completed" />); }
 
     return (
         <Box sx={{
@@ -92,7 +77,7 @@ export default function Completed() {
                 <DialogTitle>Are you sure to clear the completed tasks list?</DialogTitle>
                 <DialogActions>
                     <Button onClick={() => setClearConfirmOpen(false)} variant='outlined'>Cancel</Button>
-                    <Button onClick={clearList} variant='contained'>Apply</Button>
+                    <Button onClick={clearList} variant='contained'>Clear</Button>
                 </DialogActions>
             </Dialog>
             <TableContainer component={Box}>
@@ -103,7 +88,7 @@ export default function Completed() {
                             <TableCell>Output</TableCell>
                             <TableCell sx={{ minWidth: 188 }}>Total Consumed Time</TableCell>
                             <TableCell sx={{ minWidth: 148 }}>Finished Time</TableCell>
-                            <TableCell sx={{ minWidth: 168 }}>
+                            <TableCell align="right" sx={{ minWidth: 163 }}>
                                 <Button
                                     variant="contained"
                                     color="primary"
@@ -124,7 +109,7 @@ export default function Completed() {
                                     <TableCell>{task.input.map((file) => file.path.split("/").pop()).join(", ")}</TableCell>
                                     <TableCell>{task.output.path}</TableCell>
                                     <TableCell>{task.total_consumed}</TableCell>
-                                    <TableCell>{new Date(task.finished_time).toLocaleString('zh-CN')}</TableCell>
+                                    <TableCell>{new Date(task.finished_time).toLocaleString()}</TableCell>
                                     <TableCell>
                                         <IconButton disableRipple>
                                             {taskSelected === index ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}

@@ -4,6 +4,7 @@ on:
   push:
     tags-ignore:
       - "*-rc*"
+      - "*-RC*"
       - "*-beta*"
       - "*-alpha*"
       - "*-dev*"

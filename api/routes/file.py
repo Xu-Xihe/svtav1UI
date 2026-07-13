@@ -48,16 +48,23 @@ class FileOprations:
         cmd = "zscale="
         hdr = cls._check_hdr(ct)
 
-        if not any(x in pf for x in ["rgb", "gbr", "bgr"]):
-            if any(x in cs for x in ["rgb", "gbr", "bgr"]):
-                cmd += f"matrixin={'bt2020nc' if hdr else 'bt709'}:"
-
-        if cs == "":
+        if (
+            not any(x in pf for x in ["rgb", "gbr", "bgr"])
+            and any(x in cs for x in ["rgb", "gbr", "bgr"])
+        ) or cs == "":
             cmd += f"matrixin={'bt2020nc' if hdr else 'bt709'}:"
+        else:
+            cmd += f"matrixin={cs}:"
+
         if ct == "":
             cmd += f"transferin={'smpte2084' if hdr else 'bt709'}:"
+        else:
+            cmd += f"transferin={ct}:"
+
         if cp == "":
             cmd += f"primariesin={'bt2020' if hdr else 'bt709'}:"
+        else:
+            cmd += f"primariesin={cp}:"
 
         if hdr:
             cmd += (
@@ -168,8 +175,9 @@ class FileOprations:
             str(path.resolve()),
         ]
 
-        Lg.info(f"Fetching file info: {path.resolve()}")
-        Lg.debug(f"Running command: {" ".join(shlex.quote(arg) for arg in cmd)}\n\n")
+        Lg.debug(
+            f"Fetch file info with command: {' '.join(shlex.quote(arg) for arg in cmd)}"
+        )
 
         proc = await asyncio.create_subprocess_exec(
             *cmd,
@@ -216,7 +224,7 @@ class FileOprations:
                 if video.get("bit_rate") and video["bit_rate"].isdigit()
                 else 0
             ),
-            duration=round(float(video["duration"])),
+            duration=float(video["duration"]),
             audio_bit_rate=(
                 int(audio["bit_rate"])
                 if audio.get("bit_rate") and audio["bit_rate"].isdigit()
@@ -229,7 +237,7 @@ class FileOprations:
         avg_br = round(org.size * 8 / org.duration - org.audio_bit_rate)
         v_br = org.bit_rate if abs(org.bit_rate - avg_br) / avg_br <= 0.13 else avg_br
 
-        return TranscodeInfo(
+        rtn = TranscodeInfo(
             zscale=cls._check_zscale(
                 org.color_space,
                 org.color_transfer,
@@ -243,6 +251,8 @@ class FileOprations:
             audio_br=org.audio_bit_rate,
             sar_fix=cls._check_sar(org.sar),
         )
+        Lg.debug(f"Fetch transcode info {org.path}: {rtn}")
+        return rtn
 
     @classmethod
     async def fetch_multinput(
@@ -250,30 +260,33 @@ class FileOprations:
         infos: list[FileInfo],
     ) -> TranscodeInfo:
 
-        if not all(
-            (
-                f.width,
-                f.height,
-                f.frame_rate,
-                f.sar,
-                f.codec,
-                f.color_space,
-                f.color_transfer,
-                f.color_primaries,
-                f.pix_fmt,
+        c_s = {f.color_space for f in infos if f.color_space is not None}
+        c_t = {f.color_transfer for f in infos if f.color_transfer is not None}
+        c_p = {f.color_primaries for f in infos if f.color_primaries is not None}
+
+        if (
+            not all(
+                (
+                    f.width,
+                    f.height,
+                    f.frame_rate,
+                    f.sar,
+                    f.codec,
+                    f.pix_fmt,
+                )
+                == (
+                    infos[0].width,
+                    infos[0].height,
+                    infos[0].frame_rate,
+                    infos[0].sar,
+                    infos[0].codec,
+                    infos[0].pix_fmt,
+                )
+                for f in infos
             )
-            == (
-                infos[0].width,
-                infos[0].height,
-                infos[0].frame_rate,
-                infos[0].sar,
-                infos[0].codec,
-                infos[0].color_space,
-                infos[0].color_transfer,
-                infos[0].color_primaries,
-                infos[0].pix_fmt,
-            )
-            for f in infos
+            or len(c_s) > 1
+            or len(c_t) > 1
+            or len(c_p) > 1
         ):
             raise Exception(
                 "Input files must have the same resolution, frame rate and SAR."
@@ -286,11 +299,11 @@ class FileOprations:
         max_br = max(f.bit_rate for f in infos)
         v_br = max_br if abs(max_br - avg_br) / avg_br <= 0.15 else avg_br
 
-        return TranscodeInfo(
+        rtn = TranscodeInfo(
             zscale=cls._check_zscale(
-                infos[0].color_space,
-                infos[0].color_transfer,
-                infos[0].color_primaries,
+                c_s.pop() if c_s else "",
+                c_t.pop() if c_t else "",
+                c_p.pop() if c_p else "",
                 infos[0].pix_fmt,
             ),
             pix_fmt=cls.pix_fmt_map[cls._check_fmt_chroma(infos[0].pix_fmt)][
@@ -300,6 +313,8 @@ class FileOprations:
             audio_br=max(f.audio_bit_rate for f in infos),
             sar_fix=cls._check_sar(infos[0].sar),
         )
+        Lg.debug(f"Fetch multinput transcode info: {rtn}")
+        return rtn
 
 
 file_router = APIRouter(prefix="/file", tags=["file"])
@@ -342,6 +357,9 @@ async def get_multinput_info(files: list[FileInfo]):
 async def test_endpoint(
     file_path: str = Query(..., description="The path to the file")
 ):
+    """
+    Test the endpoint by fetching file information and transcoding information for a given file path.
+    """
     path = Path(file_path)
     if not path.exists():
         raise HTTPException(status_code=404, detail="File not found")

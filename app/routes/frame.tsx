@@ -11,38 +11,50 @@ import {
 import AddCircleRoundedIcon from '@mui/icons-material/AddCircleRounded';
 import PlayCircleOutlineRoundedIcon from '@mui/icons-material/PlayCircleOutlineRounded';
 import PauseCircleOutlineRoundedIcon from '@mui/icons-material/PauseCircleOutlineRounded';
-import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
+import AddBoxRoundedIcon from '@mui/icons-material/AddBoxRounded';
 
 import { useNavigate, Outlet, useLocation } from "react-router";
 
 import { useState } from "react";
 
 import AppBarComponent from "../components/appbar";
-import InsertTask from "../components/insert_task";
+import InsertTaskDialog from "../components/insert";
+import InsertLLMTaskDialog from "../components/insert/llm_index";
 
-
+const drawerWidth = 218;
 
 export default function Home() {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const [insertTaskOpen, setInsertTaskOpen] = useState(false);
+    const [insertTaskOpen, setInsertTaskOpen] = useState<null | boolean>(null);
 
     return (
         <>
-            {insertTaskOpen && <InsertTask
-                org_task={undefined}
-                open
-                onClose={() => {
-                    setInsertTaskOpen(false);
-                }}
-                onCancelled={() => {
-                    setInsertTaskOpen(false);
-                }}
-            />}
+            {insertTaskOpen === true &&
+                <InsertTaskDialog
+                    onClose={() => {
+                        setInsertTaskOpen(null);
+                    }}
+                    onCancel={() => {
+                        setInsertTaskOpen(null);
+                    }}
+                />
+            }
+            {insertTaskOpen === false &&
+                <InsertLLMTaskDialog
+                    onClose={() => {
+                        setInsertTaskOpen(null);
+                    }}
+                    onCancel={() => {
+                        setInsertTaskOpen(null);
+                    }}
+                />
+            }
             <AppBarComponent />
             <Box sx={{
                 position: "absolute",
@@ -63,7 +75,7 @@ export default function Home() {
                     flexDirection: 'column',
                     justifyContent: 'flex-start',
                     alignItems: 'flex-start',
-                    width: 198,
+                    width: drawerWidth,
                     height: "100%",
                     flexShrink: 0,
                     flexGrow: 0,
@@ -74,12 +86,16 @@ export default function Home() {
                         "Queue": [
                             ['Running', "/running", <PlayCircleOutlineRoundedIcon />],
                             ['Waiting', "/waiting", <PauseCircleOutlineRoundedIcon />],
-                            ['Completed', "/completed", <CheckRoundedIcon />],
+                            ['LLM Waiting', "/llm-waiting", <PauseCircleOutlineRoundedIcon />],
+                            ['Completed', "/completed", <CheckCircleRoundedIcon />],
+                            ['LLM Completed', "/llm-completed", <CheckCircleRoundedIcon />],
                             ['Failed', "/failed", <CancelOutlinedIcon />],
                         ],
                         "Settings": [
-                            ['System Settings', "/sys_settings", <SettingsRoundedIcon />],
-                            ['SVT-AV1 Settings', "/svtav1_settings", <TuneRoundedIcon />],
+                            ['System Settings', "/sys_settings", <TuneRoundedIcon />],
+                            ['Transcoder Settings', "/tran_settings", <TuneRoundedIcon />],
+                            ['Whisper Settings', "/whisper_settings", <SettingsRoundedIcon />],
+                            ['LLM Settings', "/llm_settings", <SettingsRoundedIcon />],
                         ],
                     } as Record<string, [string, string, React.ReactNode][]>)
                         .map(([subheader, items]) => (
@@ -122,6 +138,16 @@ export default function Home() {
                                 <ListItemText primary="Insert Task" />
                             </ListItemButton>
                         </ListItem>
+                        <ListItem disablePadding>
+                            <ListItemButton
+                                onClick={() => setInsertTaskOpen(false)}
+                            >
+                                <ListItemIcon>
+                                    <AddBoxRoundedIcon />
+                                </ListItemIcon>
+                                <ListItemText primary="Insert LLM Task" />
+                            </ListItemButton>
+                        </ListItem>
                     </List>
                 </Box>
                 <Divider orientation="vertical" flexItem />
@@ -130,7 +156,7 @@ export default function Home() {
                     flexDirection: 'column',
                     justifyContent: 'flex-start',
                     alignItems: 'flex-start',
-                    width: "calc(100vw - 198px)",
+                    width: `calc(100vw - ${drawerWidth}px)`,
                     height: "100%",
                 }}>
                     <Outlet />

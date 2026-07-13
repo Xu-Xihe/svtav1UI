@@ -3,8 +3,6 @@ import sys
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
-from fastapi import logger
-
 
 class Lg:
 

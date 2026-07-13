@@ -3,9 +3,10 @@ from typing import Optional, Literal
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
-VERSION = "2.0.0"
+VERSION = "3.0.0"
 
-FileSuffixs = [
+
+VideoSuffixs = [
     ".mp4",
     ".mkv",
     ".avi",
@@ -48,6 +49,25 @@ Codec = {
 CODEC_ID = {k: i for i, k in enumerate(Codec)}
 
 
+Language = Literal[
+    "en",
+    "ja",
+    "zh",
+    "zh-CN",
+    "zh-TW",
+    "ko",
+    "fr",
+    "de",
+    "es",
+    "it",
+    "ru",
+    "pt",
+    "ar",
+    "th",
+    "vi",
+]
+
+
 # Base Models
 class FileInfo(BaseModel):
     path: Path
@@ -82,24 +102,14 @@ class FileInfo(BaseModel):
 class FileETAInfo(BaseModel):
     codec: int
     pixel_count: int
-    pixels_per_second: float
     frame_count: int
+    subtitle: bool = False
 
     preset: int
     target_bit_rate: int
     lookahead: int
     keyint: int  # frame count
     scd: bool
-
-    E_mean: Optional[float] = None
-    E_p95: Optional[float] = None
-    E_diff_mean: Optional[float] = None
-
-    h_mean: Optional[float] = None
-    h_diff_mean: Optional[float] = None
-
-    epsilon_mean: Optional[float] = None
-    epsilon_diff_mean: Optional[float] = None
 
     @field_validator("codec")
     def validate_codec(cls, v):
@@ -108,16 +118,45 @@ class FileETAInfo(BaseModel):
         return v
 
 
-class Settings(BaseModel):
-    vca_on: bool = True
+class TranslatorSettings(BaseModel):
+    # whisper settings
+    voice_speech_duration: int = Field(default=30, ge=0, le=300)
+    voice_minimum_silence_duration: int = Field(default=300, ge=0, le=1000)
+    voice_threshold: float = Field(default=0.63, ge=0.0, le=1.0)
+    voice_temperature: float = Field(default=0.03, ge=0.0, le=1.0)
+    max_length_segment: int = Field(default=38, ge=10, le=100)
+    asr_model: Optional[Path] = None
+    vad_model: Optional[Path] = None
+
+    # llm settings
+    llm_type: Literal["openai-api", "llama.cpp", "mlx"] = "openai-api"
+    llm_key: Optional[str] = None
+    max_tokens: int = Field(default=8000, ge=500, le=32000)
+    max_input: int = Field(default=333, ge=30, le=8000)
+    prompt: list[dict] = [
+        {
+            "role": "system",
+            "content": "You are a professional translator.\n"
+            "You will receive a multi-line text, and you need to translate it into the target language while keeping each line unchanged.\n"
+            "The multi-line text is provided for you to understand the context only."
+            "The only output you need to return is the translated text, without any additional content, and without inferring or guessing the meaning of the text.\n"
+            "You should only act as a professional and accurate translator."
+            "Do not return any analysis, thought process, or steps like 'Step 1/2/3', which is the content between <think>.\n"
+            "At the beginning of the result, output a line '这是翻译结果的开始; This is the start of the translation result; 标识符: yyytttqqq.', and then start outputting the translation result from the next line.\n",
+        }
+    ]
+    temperature: float = Field(default=0.3, ge=0.0, le=2.0)
+
+
+class GeneralSettings(BaseModel):
+    # General Settings
     overwrite: bool = False
     delete_source: bool = True
-    rotate: Optional[int] = Field(default=None, ge=0, le=6)
     retry: int = Field(default=3, ge=0, le=8)
 
-    max_bitrate_mb: float = Field(default=48, ge=8)
-
+    # Transcoder Settings
     preset: int = Field(default=6, ge=0, le=12)
+    max_bitrate_mb: float = Field(default=88.8, ge=0.1, le=338)
     overshoot_pct: int = Field(default=100, ge=0, le=100)
     undershoot_pct: int = Field(default=10, ge=0, le=100)
     minsection_pct: int = Field(default=80, ge=0, le=100)
@@ -133,6 +172,10 @@ class TranscodeInfo(BaseModel):
     sar_fix: str = ""
     video_br: int
     audio_br: int
+    rotate: Optional[int] = Field(default=None, ge=0, le=6)
+    subtitle: Optional[Language] = None
+    tran: Optional[Language] = None
+    tran_inmediate: bool = False
 
 
 class TaskInfo(BaseModel):
@@ -140,7 +183,15 @@ class TaskInfo(BaseModel):
     input: list[FileInfo]
     output: Path
     args: TranscodeInfo
-    settings: Settings
+    settings: GeneralSettings
+
+
+class LLMTaskInfo(BaseModel):
+    uid: Optional[int] = None
+    input: Path
+    output: Path
+    org_lang: Language
+    tran_lang: Language
 
 
 class TaskSchedule(BaseModel):
@@ -156,11 +207,21 @@ class HistoryTable(FileETAInfo):
 
 
 # Api Models
-class ApiRunning(TaskInfo):
+class ApiRunning(BaseModel):
+    uid: int
+    input: list[FileInfo] | Path
+    output: Path
+    args: Optional[TranscodeInfo] = None
+    settings: Optional[GeneralSettings] = None
+    org_lang: Optional[Language] = None
+    tran_lang: Optional[Language] = None
+
+    state: Literal["audio_prefix", "transcode", "whisper", "llm_gen"] = "audio_prefix"
+
     cpu_usage: float = 0.0
     ram_usage: float = 0.0
 
-    start_time: datetime = datetime.now(timezone.utc)
+    start_time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     consumed_time: timedelta = timedelta(seconds=0)
 
     frame: int = 0
@@ -174,6 +235,8 @@ class ApiRunning(TaskInfo):
     speed: float = 0.0
     progress: float = 0.0
     eta: timedelta = timedelta(seconds=0)
+
+    log: list[str] = []
 
     class Config:
         json_encoders = {timedelta: lambda td: str(td).split(".")[0]}
@@ -197,8 +260,14 @@ class ApiWaiting(TaskInfo):
     error: list[str] = []
 
 
-class ApiFailed(TaskInfo):
+class ApiFailed(BaseModel):
+    uid: int
+    input: list[FileInfo] | Path
+    output: Path
+    args: TranscodeInfo
+    settings: Optional[GeneralSettings] = None
     error: list[str]
+    time: datetime
 
 
 class ApiCompleted(BaseModel):
@@ -208,7 +277,15 @@ class ApiCompleted(BaseModel):
     finished_time: datetime
 
 
-class ApiPathls(BaseModel):
+class ApiLLMCompleted(BaseModel):
+    input: Path
+    output: Path
+    org_lang: Language
+    tran_lang: Language
+    finished_time: datetime
+
+
+class ApiPath(BaseModel):
     dir: list[str]
     file: list[str]
 
