@@ -55,13 +55,21 @@ export interface GeneralSettings {
 
 export interface TranslatorSettings {
     // whisper settings
+    asr_model: string | null
+    voice_temperature: number
+    max_length_segment: number
+    no_speech_threshold: number
+    entropy_thold: number
+    logprob_thold: number
+    max_context: number
+    suppress_nst: boolean
+    no_fallback: boolean
+
+    // VAD settings
+    vad_model: string | null
     voice_speech_duration: number
     voice_minimum_silence_duration: number
     voice_threshold: number
-    voice_temperature: number
-    max_length_segment: number
-    asr_model: string | null
-    vad_model: string | null
 
     // llm settings
     llm_type: "openai-api" | "llama.cpp" | "mlx"

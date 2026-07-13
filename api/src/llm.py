@@ -12,7 +12,7 @@ from src.models import (
 from src.logger import Lg
 from src.database import Database as db
 
-OUTPUT_FLAG = "这是翻译结果的开始; This is the start of the translation result; 标识符: yyytttqqq."
+OUTPUT_FLAG = "yyytttqqq."
 
 
 class _openai:
@@ -148,21 +148,14 @@ class LLM:
                     elif "-->" in l:
                         current = l
                     else:
-                        rept = self._repeat(l)
-                        if rept is not None:
-                            l = rept * (1 if len(rept) > 8 else 8 // len(rept))
-                        chunk.append((current, l))
-                        count += len(l)
-
-                    # translate
-                    if count >= self.config.max_input:
-                        await asyncio.to_thread(self._tran, chunk, max_index)
-                        # reset
-                        count = 0
-                        chunk = []
-
-                        # update progress
-                        self.progress.progress = (in_f.tell() / total_size) * 100
+                        if count + len(l) >= self.config.max_input:
+                            await asyncio.to_thread(self._tran, chunk, max_index - 1)
+                            count = len(l)
+                            chunk = [(current, l)]
+                            self.progress.progress = (in_f.tell() / total_size) * 100
+                        else:
+                            chunk.append((current, l))
+                            count += len(l)
 
                 # translate the last block
                 await asyncio.to_thread(self._tran, chunk, max_index)
@@ -200,36 +193,13 @@ class LLM:
 
         if len(trans) < length:
             raise ValueError(
-                f"LLM translation result is shorter than input, some lines may be missing. Input length: {length}, Output length: {len(trans)}"
+                f"LLM translation result is shorter than input: {length}/{len(trans)}.\n Input: {content}\nOutput: {trans}"
             )
-
-        Lg.debug(f"LLM translation result: {tran}")
-        for i, (time, text) in enumerate(content):
+        for i, text in enumerate(content):
             self.output.write(f"{max_index - length + i + 1}\n")
-            self.output.write(f"{time}\n")
+            self.output.write(f"{text[0]}\n")
             self.output.write(f"{trans[i]}\n\n")
-            self.progress.log.append(f"{time} -> {trans[i]}")
-
-    @staticmethod
-    def _repeat(s: str) -> Optional[str]:
-        """
-        如果 s 由某个子串重复构成，返回最小重复子串；
-        否则返回 None
-        """
-        if not s:
-            return None
-
-        t = (s + s)[1:-1]
-        if s in t:
-            # 找最小周期
-            n = len(s)
-            for i in range(1, n + 1):
-                if n % i == 0:
-                    unit = s[:i]
-                    if unit * (n // i) == s:
-                        Lg.debug(f"Found repeating unit: {unit} for string: {s}")
-                        return unit
-        return None
+            self.progress.log.append(f"{text[0]} -> {trans[i]}")
 
     def _success(self) -> None:
         db.execute(

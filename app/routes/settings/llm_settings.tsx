@@ -41,16 +41,14 @@ export function LLMSettingPage({ embedded = false }: { embedded?: boolean }) {
         prompt: [
             {
                 "role": "system",
-                "content": `You are a professional translator.
-You will receive a multi-line text, and you need to translate it into the target language while keeping each line unchanged.
-The multi-line text is provided for you to understand the context only."
+                "content": `You are a professional and accurate translator.
+You will receive a multi-line text, and you need to translate it into the target language while keeping each line unchanged. The multi-line text is provided for you to understand the context only."
 The only output you need to return is the translated text, without any additional content, and without inferring or guessing the meaning of the text.
-You should only act as a professional and accurate translator."
-Do not return any analysis, thought process, or steps like 'Step 1/2/3', which is the content between <think>.
-At the beginning of the result, output a line '这是翻译结果的开始; This is the start of the translation result; 标识符: yyytttqqq.', and then start outputting the translation result from the next line.\n`,
+Do not return any think process between <think> and </think>.
+At the beginning of the result, output a line 'Singal: yyytttqqq.', and then start outputting the translation result from the next line.`,
             }
         ],
-        temperature: 0.3
+        temperature: 0.13
     };
 
     // @ts-expect-error

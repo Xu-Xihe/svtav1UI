@@ -69,7 +69,7 @@ export default function InsertLLMTaskDialog({
         let error: LLMTaskInfo[] = [];
         for (const task of tasks) {
             try {
-                await api.post(`${apiUrl}/task/submit/llm`, { json: { task } });
+                await api.post(`${apiUrl}/task/submit/llm`, { json: task });
             }
             catch (e) { error.push(task); pushError(e, "Submit task: " + task.input); }
         }
@@ -78,8 +78,7 @@ export default function InsertLLMTaskDialog({
             setTasks(error);
         }
         onClose();
-        navigate("/llm-waiting");
-        navigate(0);
+        navigate("/running");
     };
 
     const addNew = async (path: string) => {

@@ -1,8 +1,7 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from pathlib import Path
 from pypinyin import lazy_pinyin
 from natsort import natsorted
-from typing import Literal
 
 from src.models import ApiPath, VideoSuffixs
 from src.logger import Lg
@@ -28,7 +27,7 @@ async def list_directory(
 ):
     path = Path(path_str)
     if not path.exists():
-        raise Exception("Path not found")
+        raise HTTPException(400, "Invalid path")
     if not path.is_dir():
         return ApiPath(dir=[], file=[])
     dir: list[str] = []
@@ -64,6 +63,6 @@ async def mkdir_path(
 async def is_file_path(path_str: str = Query(..., description="Path to check")):
     path = Path(path_str)
     if not path.exists():
-        raise Exception("Path not found")
+        raise HTTPException(400, "Invalid path")
     else:
         return path.is_file()

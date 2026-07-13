@@ -93,6 +93,12 @@ class ETA:
 
     @classmethod
     async def insert_history(cls, task: ApiWaiting, consumed_time: int):
+        if task.eta.target_bit_rate <= 0:
+            Lg.debug(
+                f"Skipping history insertion for {task.input[0].path} due to target_bit_rate <= 0"
+            )
+            return
+
         data = HistoryTable(
             total_consumed=consumed_time,
             **task.eta.model_dump(),

@@ -29,22 +29,15 @@ class Monitor:
             pass
 
     async def _update_progress(self) -> None:
-        while True:
-            # Check if the process has finished or crashed
-            if self.proc.returncode is not None:
-                break
+        assert self.proc.stdout is not None
 
-            # Read the progress output from the subprocess
-            assert self.proc.stdout is not None
-            try:
-                raw_line = await asyncio.wait_for(
-                    self.proc.stdout.readline(), timeout=0.3
-                )
+        try:
+            async for raw_line in self.proc.stdout:
                 self.decoder(raw_line.decode().strip())
-            except Exception:
-                continue
-
-        await self._callback()
+        except asyncio.CancelledError as e:
+            raise e
+        else:
+            await self._callback()
 
     async def _callback(self):
         # Check if the process has finished or crashed

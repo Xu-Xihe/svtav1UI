@@ -120,13 +120,21 @@ class FileETAInfo(BaseModel):
 
 class TranslatorSettings(BaseModel):
     # whisper settings
+    asr_model: Optional[Path] = None
+    max_length_segment: int = Field(default=38, ge=10, le=100)
+    voice_temperature: float = Field(default=0.0, ge=0.0, le=1.0)
+    no_speech_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
+    entropy_thold: float = Field(default=2.3, ge=0.0, le=8.0)
+    logprob_thold: float = Field(default=-1.0, ge=-8.0, le=0.0)
+    max_context: int = Field(default=-1, ge=-1, le=5120)
+    suppress_nst: bool = False
+    no_fallback: bool = False
+
+    # VAD settings
+    vad_model: Optional[Path] = None
     voice_speech_duration: int = Field(default=30, ge=0, le=300)
     voice_minimum_silence_duration: int = Field(default=300, ge=0, le=1000)
     voice_threshold: float = Field(default=0.63, ge=0.0, le=1.0)
-    voice_temperature: float = Field(default=0.03, ge=0.0, le=1.0)
-    max_length_segment: int = Field(default=38, ge=10, le=100)
-    asr_model: Optional[Path] = None
-    vad_model: Optional[Path] = None
 
     # llm settings
     llm_type: Literal["openai-api", "llama.cpp", "mlx"] = "openai-api"
@@ -136,16 +144,14 @@ class TranslatorSettings(BaseModel):
     prompt: list[dict] = [
         {
             "role": "system",
-            "content": "You are a professional translator.\n"
-            "You will receive a multi-line text, and you need to translate it into the target language while keeping each line unchanged.\n"
-            "The multi-line text is provided for you to understand the context only."
+            "content": "You are a professional and accurate translator.\n"
+            "You will receive a multi-line text, and you need to translate it into the target language while keeping each line unchanged. The multi-line text is provided for you to understand the context only."
             "The only output you need to return is the translated text, without any additional content, and without inferring or guessing the meaning of the text.\n"
-            "You should only act as a professional and accurate translator."
-            "Do not return any analysis, thought process, or steps like 'Step 1/2/3', which is the content between <think>.\n"
-            "At the beginning of the result, output a line '这是翻译结果的开始; This is the start of the translation result; 标识符: yyytttqqq.', and then start outputting the translation result from the next line.\n",
+            "Do not return any think process between <think> and </think>.\n"
+            "At the beginning of the result, output a line 'Singal: yyytttqqq.', and then start outputting the translation result from the next line.",
         }
     ]
-    temperature: float = Field(default=0.3, ge=0.0, le=2.0)
+    temperature: float = Field(default=0.13, ge=0.0, le=2.0)
 
 
 class GeneralSettings(BaseModel):

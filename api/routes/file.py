@@ -329,7 +329,7 @@ async def get_file_info(
     """
     path = Path(file_path)
     if not path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(400, "Invalid path")
     if not path.is_file():
         raise HTTPException(status_code=400, detail="Path is not a file")
     return await FileOprations.fetch_file_info(path)
@@ -362,7 +362,7 @@ async def test_endpoint(
     """
     path = Path(file_path)
     if not path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(400, "Invalid path")
     if not path.is_file():
         raise HTTPException(status_code=400, detail="Path is not a file")
     org = await FileOprations.fetch_file_info(path)

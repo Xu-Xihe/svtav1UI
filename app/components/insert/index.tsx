@@ -34,7 +34,7 @@ export default function InsertTaskDialog({
 }) {
     // sys const
     const navigate = useNavigate();
-    const { pushMsg, pushError } = useErrorMsg();
+    const { pushMsg } = useErrorMsg();
 
     // user variables
     const [tasks, setTasks] = useState<Taskls[]>([]);
@@ -85,7 +85,6 @@ export default function InsertTaskDialog({
                     pushMsg(`Insert the failed task successfully.`, "success");
                     onClose();
                     navigate("/failed");
-                    navigate(0);
                 });
         }
         else if (insertSettings.multi_in_one) {
@@ -103,8 +102,7 @@ export default function InsertTaskDialog({
                 .then(() => {
                     pushMsg(`Insert the multi-in-one task successfully.`, "success");
                     onClose();
-                    navigate("/waiting");
-                    navigate(0);
+                    navigate("/running");
                 });
         }
         else {
@@ -112,8 +110,7 @@ export default function InsertTaskDialog({
                 .then(() => {
                     pushMsg(`Insert ${tasks.length} task(s) successfully.`, "success");
                     onClose();
-                    navigate("/waiting");
-                    navigate(0);
+                    navigate("/running");
                 })
                 .catch((error) => {
                     if (Array.isArray(error)) {

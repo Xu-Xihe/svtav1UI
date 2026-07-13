@@ -100,7 +100,7 @@ export default function Waiting() {
             .then(async (data) => {
                 const newData = await Promise.all(
                     data.map(async (task) => {
-                        const eta_v = await getEta(task);
+                        const eta_v = task.args.video_br > 0 ? await getEta(task) : -1;
                         return {
                             ...task,
                             eta_v,
@@ -122,9 +122,7 @@ export default function Waiting() {
             .catch(error => pushError(error, "Delete waiting task"));
     }
 
-    useEffect(() => {
-        fetchls();
-    }, []);
+    useEffect(() => { fetchls(); }, []);
 
 
     function SortableFileInfo({ task, index }: { task: ApiWaiting, index: number }) {

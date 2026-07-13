@@ -4,7 +4,7 @@ import json
 
 from datetime import datetime, timezone, timedelta
 
-from src.models import ApiWaiting, GeneralSettings, TaskInfo, LLMTaskInfo, TranscodeInfo
+from src.models import ApiWaiting, TaskInfo, LLMTaskInfo, TranscodeInfo
 from src.database import Database as db
 from src.logger import Lg
 from src.eta import ETA
@@ -210,7 +210,6 @@ class Queue:
                 elif task.args.video_br > 0 and task.args.subtitle is None:
                     self.running = await Transcode.run(task)
                     await self.running.wait()
-                    print("fadfadf")
 
             except asyncio.CancelledError as e:
                 if str(e) == "task":
@@ -263,7 +262,7 @@ class Queue:
         total_time = datetime.now(timezone.utc) - self.suspend_total
         if isinstance(self.running, tuple):
             total_time -= self.running[0].progress.start_time
-        elif isinstance(self.running, Transcode):
+        elif isinstance(self.running, Transcode) or isinstance(self.running, Whisper):
             total_time -= self.running.progress.start_time
         else:
             return
@@ -281,7 +280,8 @@ class Queue:
             str(total_time).split(".")[0],
             datetime.now(timezone.utc).isoformat(),
         )
-        await ETA.insert_history(task, int(total_time.total_seconds()))
+        if task.args.video_br > 0:
+            await ETA.insert_history(task, int(total_time.total_seconds()))
 
         if task.settings.delete_source and task.args.video_br > 0:
             for f in task.input:
