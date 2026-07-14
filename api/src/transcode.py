@@ -141,13 +141,9 @@ class Transcode:
             str(self.task.output.resolve()),
         ]
 
-        Lg.info(
-            f"Starting transcoding: {', '.join(str(t.path.resolve()) for t in self.task.input)} -> {self.task.output}"
-        )
         Lg.debug(
             f"Initialized Transcode task: cmd: {' '.join(shlex.quote(arg) for arg in cmd)}"
         )
-
         return cmd
 
     def _decoder(self, raw_line: str) -> None:

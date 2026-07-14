@@ -23,6 +23,7 @@ class Whisper:
             raise FileNotFoundError(
                 f"Input file {self.input} is missing or not a WAV file."
             )
+        self.output.unlink(missing_ok=True)  # Remove existing output file if it exists
 
         # run command
         self.proc: asyncio.subprocess.Process
@@ -75,7 +76,7 @@ class Whisper:
             "-np",
             "-pp",
             "-tp",
-            str(self.config.voice_threshold),
+            str(self.config.voice_temperature),
             "-osrt",
             "-l",
             self.task.args.subtitle,
@@ -134,7 +135,7 @@ class Whisper:
         timesetp = ""
         content = ""
         temp_file = self.output.with_suffix(".temp")
-        with self.output.open("r", encoding="utf-8") as fin:
+        with self.output.open("r", encoding="utf-8", errors="replace") as fin:
             with temp_file.open("w", encoding="utf-8") as fout:
                 for line in fin:
                     if line.strip().isdigit():

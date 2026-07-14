@@ -155,6 +155,7 @@ async def get_failed():
                 ApiFailed(
                     **(db.fetch_data(row)).model_dump(),
                     error=json.loads(row["error"]),
+                    time=datetime.fromisoformat(row["time"]),
                 )
             )
         else:

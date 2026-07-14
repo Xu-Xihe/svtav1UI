@@ -114,7 +114,7 @@ export async function decodeTaskInfo(task: TaskInfo): Promise<[Taskls[], string,
     let insertSettings: InsertSettings = ({
         multi_in_one: false,
         allow_av1: true,
-        only_subtitle: false,
+        only_subtitle: task.args.video_br <= 0,
         priority: false,
         rotate: task.args.rotate,
         subtitle: task.args.subtitle,

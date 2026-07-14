@@ -33,7 +33,7 @@ class Monitor:
 
         try:
             async for raw_line in self.proc.stdout:
-                self.decoder(raw_line.decode().strip())
+                self.decoder(raw_line.decode(errors="ignore").strip())
         except asyncio.CancelledError as e:
             raise e
         else:
@@ -49,7 +49,7 @@ class Monitor:
             if self.proc.stderr is None:
                 error_message = "Unknown error occurred."
             else:
-                error_message = (await self.proc.stderr.read()).decode()
+                error_message = (await self.proc.stderr.read()).decode(errors="ignore")
             Lg.error(
                 f"Process exited with code {self.proc.returncode}: {error_message}"
             )
