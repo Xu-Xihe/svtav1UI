@@ -78,7 +78,12 @@ export default function InsertLLMTaskDialog({
             setTasks(error);
         }
         onClose();
-        navigate("/running");
+        if (retry_task) {
+            navigate("/failed");
+        }
+        else {
+            navigate("/running");
+        }
     };
 
     const addNew = async (path: string) => {

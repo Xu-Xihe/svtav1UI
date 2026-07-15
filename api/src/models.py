@@ -140,15 +140,16 @@ class TranslatorSettings(BaseModel):
     llm_type: Literal["openai-api", "llama.cpp", "mlx"] = "openai-api"
     llm_key: Optional[str] = None
     max_tokens: int = Field(default=8000, ge=500, le=32000)
-    max_input: int = Field(default=333, ge=30, le=8000)
+    max_input: int = Field(default=330, ge=30, le=8000)
     prompt: list[dict] = [
         {
             "role": "system",
-            "content": "You are a professional and accurate translator.\n"
-            "You will receive a multi-line text, and you need to translate it into the target language while keeping each line unchanged. The multi-line text is provided for you to understand the context only."
-            "The only output you need to return is the translated text, without any additional content, and without inferring or guessing the meaning of the text.\n"
-            "Do not return any think process between <think> and </think>.\n"
-            "At the beginning of the result, output a line 'Singal: yyytttqqq.', and then start outputting the translation result from the next line.",
+            "content": "You must not return any think process between <think> and </think>.\n"
+            "You are a professional and accurate translator.\n"
+            "You will receive a multi-line text, and then tranlate it line-by-line.\n"
+            "The multi-line text is provided for you to understand the context only.\n"
+            "The only output you need to return is the translated text, without inferring or guessing the meaning of the text.\n"
+            "Start output the translation with a line 'Singal: yyytttqqq.'.",
         }
     ]
     temperature: float = Field(default=0.13, ge=0.0, le=2.0)

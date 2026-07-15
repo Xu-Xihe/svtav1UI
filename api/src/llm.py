@@ -1,6 +1,6 @@
 import asyncio
 from io import TextIOWrapper
-from typing import Optional, Callable
+from typing import Callable
 from datetime import datetime, timezone
 
 from src.models import (
@@ -11,8 +11,9 @@ from src.models import (
 )
 from src.logger import Lg
 from src.database import Database as db
+from routes.settings import SettingsManager
 
-OUTPUT_FLAG = "yyytttqqq."
+OUTPUT_FLAG = "Singal: yyytttqqq."
 
 
 class _openai:
@@ -58,7 +59,12 @@ class _mlx:
         from mlx_lm.sample_utils import make_sampler
 
         msg = self.config.prompt + [{"role": "user", "content": prompt}]
-        msg_fit = self.tokenizer.apply_chat_template(msg, tokenize=False)
+        msg_fit = self.tokenizer.apply_chat_template(
+            msg,
+            tokenize=False,
+            enable_thinking=False,
+            add_generation_prompt=True,
+        )
         sampler = make_sampler(temp=self.config.temperature)
 
         response = generate(
@@ -170,36 +176,57 @@ class LLM:
             self._success()
 
     def _tran(self, content: list[tuple[str, str]], max_index: int) -> None:
-        tran = self.gen(
-            f"The standard code of the input language is: {self.task.org_lang}, and the standard code of the output language is: {self.task.tran_lang}.\n"
-            "Pay attention, do not translate this line, and do not include it in the output. The following is the content to be translated:\n"
-            + "\n".join(line for _, line in content)
-        )
         length = len(content)
-        trans = tran.splitlines()
 
-        for i in range(len(trans)):
-            if trans[i].strip() == "</think>":
-                trans = trans[i + 1 :]
-                break
-
-        for i in range(len(trans)):
-            if OUTPUT_FLAG in trans[i].strip():
-                i += 1
-                while i < len(trans) and trans[i].strip() == "":
-                    i += 1
-                trans = trans[i:]
-                break
+        # Block translation
+        trans = self._decoder("\n".join(text for _, text in content))
 
         if len(trans) < length:
-            raise ValueError(
-                f"LLM translation result is shorter than input: {length}/{len(trans)}.\n Input: {content}\nOutput: {trans}"
+            Lg.debug(
+                f"LLM block translation result is less than expected: {len(trans)} < {length}. Returning to line-by-line translation."
             )
+
         for i, text in enumerate(content):
+            if len(trans) >= length and trans[i] != text[1]:
+                translation = trans[i]
+            else:
+                line_trans = self._decoder(text[1])
+                if len(line_trans) > 0:
+                    translation = line_trans[0]
+                else:
+                    translation = "<missing translation>"
+
             self.output.write(f"{max_index - length + i + 1}\n")
             self.output.write(f"{text[0]}\n")
-            self.output.write(f"{trans[i]}\n\n")
-            self.progress.log.append(f"{text[0]} -> {trans[i]}")
+            self.output.write(f"{translation}\n\n")
+            self.progress.log.append(f"{text[0]} -> {translation}")
+
+    def _decoder(self, prompt: str) -> list[str]:
+        PROMPT = f"The standard code of the input language is: {self.task.org_lang}, and the standard code of the output language is: {self.task.tran_lang}.\n"
+        PROMPT += "The following is the content to be translated:\n"
+
+        trans: list[str] = []
+        for _ in range(SettingsManager._general.retry):
+            tran = self.gen(PROMPT + prompt)
+            trans = tran.splitlines()
+
+            # Remove any lines before the first occurrence of OUTPUT_FLAG
+            for i in range(len(trans)):
+                if OUTPUT_FLAG in trans[i].strip():
+                    i += 1
+                    while i < len(trans) and trans[i].strip() == "":
+                        i += 1
+                    trans = trans[i:]
+                    break
+
+            if len(trans) == 0:
+                Lg.debug(
+                    f"LLM Prompt and Output:\n{PROMPT + prompt}\n\n----------\n\n{tran}\n\n"
+                )
+            else:
+                break
+
+        return trans
 
     def _success(self) -> None:
         db.execute(

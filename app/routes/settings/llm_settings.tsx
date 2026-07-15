@@ -37,15 +37,15 @@ export function LLMSettingPage({ embedded = false }: { embedded?: boolean }) {
         llm_type: "openai-api" as "openai-api" | "llama.cpp" | "mlx",
         llm_key: null,
         max_tokens: 8000,
-        max_input: 333,
+        max_input: 330,
         prompt: [
             {
-                "role": "system",
+                "role": "user",
                 "content": `You are a professional and accurate translator.
-You will receive a multi-line text, and you need to translate it into the target language while keeping each line unchanged. The multi-line text is provided for you to understand the context only."
-The only output you need to return is the translated text, without any additional content, and without inferring or guessing the meaning of the text.
-Do not return any think process between <think> and </think>.
-At the beginning of the result, output a line 'Singal: yyytttqqq.', and then start outputting the translation result from the next line.`,
+You will receive a multi-line text, and then tranlate it line-by-line to the target language.
+The multi-line text is provided for you to understand the context only.
+Do not infer or guess the meaning of the text.
+Start output the translation with a line 'Singal: yyytttqqq.'.`
             }
         ],
         temperature: 0.13
@@ -115,19 +115,22 @@ At the beginning of the result, output a line 'Singal: yyytttqqq.', and then sta
                         <TextField
                             label="Base URL"
                             value={split_llm_key(config.llm_key || "")[0]}
-                            onChange={(e) => update({ ...config, llm_key: `${e.target.value};${split_llm_key(config.llm_key || "")[1]};${split_llm_key(config.llm_key || "")[2]}` })}
+                            onChange={(e) => update({
+                                ...config, llm_key: `${e.target.value}; ${split_llm_key(config.llm_key || "")[1]
+                                    };${split_llm_key(config.llm_key || "")[2]} `
+                            })}
                             sx={{ width: 188 }}
                         />
                         <TextField
                             label="API Key"
                             value={split_llm_key(config.llm_key || "")[1]}
-                            onChange={(e) => update({ ...config, llm_key: `${split_llm_key(config.llm_key || "")[0]};${e.target.value};${split_llm_key(config.llm_key || "")[2]}` })}
+                            onChange={(e) => update({ ...config, llm_key: `${split_llm_key(config.llm_key || "")[0]};${e.target.value};${split_llm_key(config.llm_key || "")[2]} ` })}
                             sx={{ width: 188 }}
                         />
                         <TextField
                             label="Model"
                             value={split_llm_key(config.llm_key || "")[2]}
-                            onChange={(e) => update({ ...config, llm_key: `${split_llm_key(config.llm_key || "")[0]};${split_llm_key(config.llm_key || "")[1]};${e.target.value}` })}
+                            onChange={(e) => update({ ...config, llm_key: `${split_llm_key(config.llm_key || "")[0]};${split_llm_key(config.llm_key || "")[1]};${e.target.value} ` })}
                             sx={{ width: 188 }}
                         />
                     </Box>
@@ -175,25 +178,24 @@ At the beginning of the result, output a line 'Singal: yyytttqqq.', and then sta
                     field={true}
                 />
             </SettingItemFrame>
-            {!embedded &&
-                <SettingItemFrame title="Prompt" desc="Prompt at the start of the conversation, used to guide the model's behavior. Don't modify this unless you know what you're doing.">
-                    <TextField
-                        multiline
-                        value={JSON.stringify(config.prompt, null, 4)}
-                        onChange={(e) => {
-                            try {
-                                const parsed = JSON.parse(e.target.value);
-                                if (Array.isArray(parsed)) {
-                                    update({ ...config, prompt: parsed });
-                                }
-                            } catch (error) {
-                                // Invalid JSON, do nothing
+            <SettingItemFrame title="Prompt" desc="Prompt at the start of the conversation, used to guide the model's behavior. Don't modify this unless you know what you're doing.">
+                <TextField
+                    disabled={embedded}
+                    multiline
+                    value={JSON.stringify(config.prompt, null, 4)}
+                    onChange={(e) => {
+                        try {
+                            const parsed = JSON.parse(e.target.value);
+                            if (Array.isArray(parsed)) {
+                                update({ ...config, prompt: parsed });
                             }
-                        }}
-                        sx={{ width: "83%" }}
-                    />
-                </SettingItemFrame>
-            }
+                        } catch (error) {
+                            // Invalid JSON, do nothing
+                        }
+                    }}
+                    sx={{ width: "83%" }}
+                />
+            </SettingItemFrame>
         </Box>
     );
 }

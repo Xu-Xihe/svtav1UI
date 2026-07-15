@@ -23,7 +23,6 @@ class Whisper:
             raise FileNotFoundError(
                 f"Input file {self.input} is missing or not a WAV file."
             )
-        self.output.unlink(missing_ok=True)  # Remove existing output file if it exists
 
         # run command
         self.proc: asyncio.subprocess.Process
@@ -132,7 +131,7 @@ class Whisper:
         )
 
         index = 1
-        timesetp = ""
+        timestamp = ""
         content = ""
         temp_file = self.output.with_suffix(".temp")
         with self.output.open("r", encoding="utf-8", errors="replace") as fin:
@@ -141,15 +140,18 @@ class Whisper:
                     if line.strip().isdigit():
                         pass
                     elif "-->" in line:
-                        timesetp = line.strip()
+                        timestamp = line.strip()
                     elif line.strip() == "":
                         pass
                     else:
                         if line.strip() != content:
                             content = line.strip()
-                            if len(line.strip()) > 13:
-                                best = self._find_repeat_block(line.strip())
-                                if best:
+                            write = line.strip()
+                            last_block = ""
+                            while len(write) > 13:
+                                best = self._find_repeat_block(write)
+                                if best and best["block"] != last_block:
+                                    last_block = best["block"]
                                     write = (
                                         best["prefix"]
                                         + best["block"]
@@ -157,29 +159,31 @@ class Whisper:
                                             3,
                                             max(
                                                 1,
-                                                13
-                                                - len(best["prefix"] + best["suffix"])
+                                                (
+                                                    13
+                                                    - len(
+                                                        best["prefix"] + best["suffix"]
+                                                    )
+                                                )
                                                 // len(best["block"]),
                                             ),
                                         )
                                         + best["suffix"]
                                     )
+                                else:
                                     self.progress.log.append(
                                         f"Fix subtitle: {line.strip()} --> {write}"
                                     )
-                                else:
-                                    write = line.strip()
-                            else:
-                                write = line.strip()
+                                    break
 
                             fout.write(f"{index}\n")
-                            fout.write(f"{timesetp}\n")
+                            fout.write(f"{timestamp}\n")
                             fout.write(f"{write}\n\n")
                             index += 1
 
                         else:
                             self.progress.log.append(
-                                f"Duplicate subtitle line detected and skipped: {timesetp} --> {line.strip()}"
+                                f"Duplicate subtitle line detected and skipped: {timestamp} --> {line.strip()}"
                             )
 
         temp_file.replace(self.output)
@@ -188,7 +192,7 @@ class Whisper:
     def _find_repeat_block(
         s: str,
         min_region_len: int = 3,
-        max_block_len: int = 30,
+        max_block_len: int = 38,
     ):
         """
         Find:

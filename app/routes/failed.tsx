@@ -34,7 +34,8 @@ interface ApiFailed {
     output: string;
     args: TranscodeInfo;
     settings: GeneralSettings | null;
-    error: string[]
+    error: string[];
+    time: string;
 }
 
 export default function Failed() {
@@ -158,6 +159,7 @@ export default function Failed() {
                             <TableRow>
                                 <TableCell>Input</TableCell>
                                 <TableCell>Output</TableCell>
+                                <TableCell sx={{ width: 183 }}>Time</TableCell>
                                 <TableCell sx={{ width: 163 }}>
                                     <Button
                                         variant="contained"
@@ -177,6 +179,7 @@ export default function Failed() {
                                         : <TableCell>{task.input}</TableCell>
                                     }
                                     <TableCell>{task.output}</TableCell>
+                                    <TableCell>{new Date(task.time).toLocaleString()}</TableCell>
                                     <TableCell sx={{ gap: 1 }}>
                                         <IconButton onClick={() => { setErrorDialog(index) }}>
                                             <InfoOutlineRoundedIcon />
