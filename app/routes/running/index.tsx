@@ -15,7 +15,7 @@ import { StateTitle } from "~/routes/running/state";
 
 export default function Running() {
     const apiUrl = getLocalStorage("apiUrl", "local");
-    const { pushMsg, pushError } = useErrorMsg();
+    const { pushError } = useErrorMsg();
 
     const [info, setInfo] = useState<ApiRunning | null>(null);
 

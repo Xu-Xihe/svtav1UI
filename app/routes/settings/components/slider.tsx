@@ -5,8 +5,6 @@ import {
     TextField,
 } from '@mui/material';
 
-import { useState } from 'react';
-
 
 export function SettingSlider({
     value,

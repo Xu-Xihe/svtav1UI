@@ -16,7 +16,6 @@ export const Language = {
     vi: "Vietnamese"
 };
 export type LanguageKey = keyof typeof Language;
-export type LanguageValue = typeof Language[LanguageKey];
 
 export interface FileInfo {
     path: string;

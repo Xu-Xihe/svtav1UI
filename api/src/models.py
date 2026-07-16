@@ -144,11 +144,10 @@ class TranslatorSettings(BaseModel):
     prompt: list[dict] = [
         {
             "role": "system",
-            "content": "You must not return any think process between <think> and </think>.\n"
-            "You are a professional and accurate translator.\n"
-            "You will receive a multi-line text, and then tranlate it line-by-line.\n"
+            "content": "You are a professional and accurate translator.\n"
+            "You will receive a multi-line text, and then tranlate it to the target language line-by-line.\n"
             "The multi-line text is provided for you to understand the context only.\n"
-            "The only output you need to return is the translated text, without inferring or guessing the meaning of the text.\n"
+            "Do not infer or guess the meaning of the text.\n"
             "Start output the translation with a line 'Singal: yyytttqqq.'.",
         }
     ]

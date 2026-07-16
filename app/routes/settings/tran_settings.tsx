@@ -1,4 +1,4 @@
-import { Box, Divider, Switch, Typography } from '@mui/material';
+import { Box, Divider, Switch } from '@mui/material';
 import { useState, useEffect } from "react";
 
 import { useErrorMsg } from "~/components/error_popout";

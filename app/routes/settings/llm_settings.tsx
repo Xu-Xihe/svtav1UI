@@ -42,7 +42,7 @@ export function LLMSettingPage({ embedded = false }: { embedded?: boolean }) {
             {
                 "role": "user",
                 "content": `You are a professional and accurate translator.
-You will receive a multi-line text, and then tranlate it line-by-line to the target language.
+You will receive a multi-line text, and then tranlate it to the target language line-by-line.
 The multi-line text is provided for you to understand the context only.
 Do not infer or guess the meaning of the text.
 Start output the translation with a line 'Singal: yyytttqqq.'.`

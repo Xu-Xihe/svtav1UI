@@ -1,7 +1,5 @@
 import { Tooltip, Typography } from "@mui/material";
 
-import { useEffect, useState } from "react";
-
 import type { TaskInfo, FileETAInfo } from "./model";
 import { api } from "./api";
 import { useErrorMsg } from "../components/error_popout";

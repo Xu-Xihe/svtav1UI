@@ -87,7 +87,7 @@ export default function Completed() {
                             <TableCell>Input</TableCell>
                             <TableCell>Output</TableCell>
                             <TableCell sx={{ minWidth: 188 }}>Total Consumed Time</TableCell>
-                            <TableCell sx={{ minWidth: 148 }}>Finished Time</TableCell>
+                            <TableCell sx={{ minWidth: 183 }}>Finished Time</TableCell>
                             <TableCell align="right" sx={{ minWidth: 163 }}>
                                 <Button
                                     variant="contained"
