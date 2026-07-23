@@ -159,7 +159,7 @@ export default function Failed() {
                             <TableRow>
                                 <TableCell>Input</TableCell>
                                 <TableCell>Output</TableCell>
-                                <TableCell sx={{ width: 183 }}>Time</TableCell>
+                                <TableCell sx={{ width: 188 }}>Time</TableCell>
                                 <TableCell sx={{ width: 163 }}>
                                     <Button
                                         variant="contained"

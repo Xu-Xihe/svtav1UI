@@ -86,9 +86,9 @@ export default function Completed() {
                         <TableRow>
                             <TableCell>Input</TableCell>
                             <TableCell>Output</TableCell>
-                            <TableCell sx={{ minWidth: 188 }}>Total Consumed Time</TableCell>
-                            <TableCell sx={{ minWidth: 183 }}>Finished Time</TableCell>
-                            <TableCell align="right" sx={{ minWidth: 163 }}>
+                            <TableCell sx={{ minWidth: 183 }} align='center'>Total Consumed Time</TableCell>
+                            <TableCell sx={{ minWidth: 188 }} align='center'>Finished Time</TableCell>
+                            <TableCell sx={{ minWidth: 163 }} align='center'>
                                 <Button
                                     variant="contained"
                                     color="primary"
@@ -108,9 +108,9 @@ export default function Completed() {
                                 >
                                     <TableCell>{task.input.map((file) => file.path.split("/").pop()).join(", ")}</TableCell>
                                     <TableCell>{task.output.path}</TableCell>
-                                    <TableCell>{task.total_consumed}</TableCell>
-                                    <TableCell>{new Date(task.finished_time).toLocaleString()}</TableCell>
-                                    <TableCell>
+                                    <TableCell align='center'>{task.total_consumed}</TableCell>
+                                    <TableCell align='center'>{new Date(task.finished_time).toLocaleString()}</TableCell>
+                                    <TableCell align='center'>
                                         <IconButton disableRipple>
                                             {taskSelected === index ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
                                         </IconButton>

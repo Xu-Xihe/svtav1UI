@@ -78,9 +78,9 @@ export default function LLMCompleted() {
                         <TableRow>
                             <TableCell>Input</TableCell>
                             <TableCell>Output</TableCell>
-                            <TableCell>Original Language</TableCell>
-                            <TableCell>Translated Language</TableCell>
-                            <TableCell sx={{ minWidth: 233 }}>
+                            <TableCell sx={{ minWidth: 163 }} align='center'>Original Language</TableCell>
+                            <TableCell sx={{ minWidth: 168 }} align='center'>Translated Language</TableCell>
+                            <TableCell sx={{ minWidth: 263 }} align='left'>
                                 Finished Time
                                 <Button
                                     variant="contained"
@@ -98,9 +98,9 @@ export default function LLMCompleted() {
                             <TableRow key={index} hover>
                                 <TableCell>{task.input}</TableCell>
                                 <TableCell>{task.output}</TableCell>
-                                <TableCell>{Language[task.org_lang]}</TableCell>
-                                <TableCell>{Language[task.tran_lang]}</TableCell>
-                                <TableCell>{new Date(task.finished_time).toLocaleString()}</TableCell>
+                                <TableCell align='center'>{Language[task.org_lang]}</TableCell>
+                                <TableCell align='center'>{Language[task.tran_lang]}</TableCell>
+                                <TableCell align='left'>{new Date(task.finished_time).toLocaleString()}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>

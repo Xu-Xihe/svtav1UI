@@ -72,9 +72,13 @@ export default function LLMWaiting() {
                                 <TableCell>UID</TableCell>
                                 <TableCell>Input</TableCell>
                                 <TableCell>Output</TableCell>
-                                <TableCell>Original Language</TableCell>
-                                <TableCell>Translation Language</TableCell>
-                                <TableCell align="right" sx={{ minWidth: 163 }} />
+                                <TableCell sx={{ minWidth: 163 }} align='center'>
+                                    Original Language
+                                </TableCell>
+                                <TableCell sx={{ minWidth: 168 }} align='center'>
+                                    Translation Language
+                                </TableCell>
+                                <TableCell sx={{ minWidth: 8 }} />
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -83,9 +87,9 @@ export default function LLMWaiting() {
                                     <TableCell>{task.uid}</TableCell>
                                     <TableCell>{task.input}</TableCell>
                                     <TableCell>{task.output}</TableCell>
-                                    <TableCell>{Language[task.org_lang]}</TableCell>
-                                    <TableCell>{Language[task.tran_lang]}</TableCell>
-                                    <TableCell>
+                                    <TableCell align='center'>{Language[task.org_lang]}</TableCell>
+                                    <TableCell align='center'>{Language[task.tran_lang]}</TableCell>
+                                    <TableCell align='center'>
                                         <IconButton onClick={() => deleteItem(task.uid!)}>
                                             <DeleteRoundedIcon color='error' />
                                         </IconButton>

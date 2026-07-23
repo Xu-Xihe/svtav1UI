@@ -56,6 +56,7 @@ export default function InsertTaskDialog({
     });
 
     // state variables
+    const [inputMustClose, setInputMustClose] = useState<boolean>(false);
     const [multiEta, setMultiEta] = useState(-1);
     const [multiargs, setMultiargs] = useState<TranscodeInfo>({} as TranscodeInfo);
     const [inserting, setInserting] = useState(false);
@@ -166,7 +167,7 @@ export default function InsertTaskDialog({
                 }).then((eta) => ({ ...t, eta }))
             )
         ).then(setTasks);
-    }, [insertSettings]);
+    }, [settings]);
 
     return (
         <Dialog open fullScreen onKeyDown={(e) => {
@@ -195,11 +196,20 @@ export default function InsertTaskDialog({
                     />
                     <NobarOverflow>
                         <List>
-                            <InputInfoList tasks={tasks} insertSettings={insertSettings} disable={retry_task !== undefined} onChange={setTasks} />
-                            <InputAddNew onInsert={async (path) => {
-                                const newTasks = await addNewFile(path, tasks.map(t => t.input.path), settings);
-                                setTasks([...tasks, ...newTasks]);
-                            }} />
+                            <InputInfoList
+                                tasks={tasks}
+                                insertSettings={insertSettings}
+                                disable={retry_task !== undefined}
+                                close={inputMustClose}
+                                onChange={setTasks}
+                            />
+                            <InputAddNew
+                                onOpen={(open) => setInputMustClose(open)}
+                                onInsert={async (path) => {
+                                    const newTasks = await addNewFile(path, tasks.map(t => t.input.path), settings);
+                                    setTasks([...tasks, ...newTasks]);
+                                }}
+                            />
                         </List>
                     </NobarOverflow>
                 </ColumnWidth>

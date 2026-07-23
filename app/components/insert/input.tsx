@@ -24,7 +24,7 @@ import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import { DragDropProvider } from '@dnd-kit/react';
 import { useSortable } from '@dnd-kit/react/sortable';
 import { move } from '@dnd-kit/helpers';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 import type { FileInfo, Taskls } from '~/hooks/model';
 import { type InsertSettings } from "~/components/insert/settings";
@@ -82,14 +82,18 @@ export function InputInfoList({
     tasks,
     insertSettings,
     disable,
+    close,
     onChange,
 }: {
     tasks: Taskls[],
     insertSettings: InsertSettings,
     disable?: boolean,
+    close?: boolean,
     onChange: (newTasks: Taskls[]) => void,
 }) {
     const [extend, setExtend] = useState<string>("");
+
+    useEffect(() => { if (close) { setExtend(""); } }, [close]);
 
     function SortableInfoItem({ data, index }: { data: FileInfo; index: number }) {
         const { ref, handleRef } = useSortable({ id: data.path, index });
@@ -160,18 +164,23 @@ export function InputInfoList({
 }
 
 
-export function InputAddNew({ onInsert, filter }: { onInsert: (path: string) => Promise<void>; filter?: "video" | "model" | "subtitle" }) {
+
+export function InputAddNew({ onOpen = () => { }, onInsert, filter }: { onOpen?: (open: boolean) => void; onInsert: (path: string) => Promise<void>; filter?: "video" | "model" | "subtitle" }) {
     const [open, setOpen] = useState(false);
     const [inserting, setInserting] = useState(false);
     const [path, setPath] = useLocalStorage("outputTempPath", "/", "local");
 
+    useEffect(() => { onOpen(open); }, [open]);
+
     if (open) {
         return (
-            <ListItem disablePadding>
-                <ListItemIcon sx={{ gap: 1, mr: 1 }}>
+            <ListItem>
+                <ListItemIcon>
                     <IconButton onClick={() => setOpen(false)}>
                         <RemoveCircleRoundedIcon color="error" />
                     </IconButton>
+                </ListItemIcon>
+                <ListItemIcon>
                     <IconButton onClick={() => {
                         setInserting(true);
                         setOpen(false);
@@ -184,7 +193,7 @@ export function InputAddNew({ onInsert, filter }: { onInsert: (path: string) => 
                         <CheckRoundedIcon color="success" />
                     </IconButton>
                 </ListItemIcon>
-                <ListItemText sx={{ pr: 1 }}>
+                <ListItemText>
                     <PathSelector
                         label="Path"
                         onClose={(path) => setPath(path)}

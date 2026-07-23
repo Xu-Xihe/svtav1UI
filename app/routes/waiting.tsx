@@ -137,11 +137,11 @@ export default function Waiting() {
                 <TableCell>{task.uid}</TableCell>
                 <TableCell>{task.input.map((file) => file.path.split("/").pop()).join(", ")}</TableCell>
                 <TableCell>{task.output}</TableCell>
-                <TableCell>
+                <TableCell align='center'>
                     <EtaText eta={task.eta_v} />
                 </TableCell>
-                <TableCell>{task.has_retry}</TableCell>
-                <TableCell>
+                <TableCell align='center'>{task.has_retry}</TableCell>
+                <TableCell align='center'>
                     <Box sx={{
                         display: "flex",
                         flexDirection: "row",
@@ -205,14 +205,14 @@ export default function Waiting() {
                 <Table sx={{ width: "100%" }} stickyHeader>
                     <TableHead>
                         <TableRow>
-                            <TableCell sx={{ minWidth: 18 }}>UID</TableCell>
+                            <TableCell sx={{ minWidth: 18 }} align='center'>UID</TableCell>
                             <TableCell>Input</TableCell>
                             <TableCell>Output</TableCell>
-                            <TableCell sx={{ minWidth: 188 }}>
+                            <TableCell sx={{ minWidth: 218 }} align='center'>
                                 <EtaText eta={waitingInfo.reduce((sum, task) => sum + Math.max(task.eta_v, 0), 0)} title="Total ETA: " />
                             </TableCell>
-                            <TableCell sx={{ minWidth: 8 }}>Retry</TableCell>
-                            <TableCell sx={{ minWidth: 8 }}>
+                            <TableCell sx={{ minWidth: 8 }} align='center'>Retry</TableCell>
+                            <TableCell sx={{ minWidth: 8 }} align='center'>
                                 <Tooltip title="Auto scroll to top when move task to top." placement="top" arrow>
                                     <Switch checked={scrollTop} onChange={(_, v) => setScrollTop(v)} />
                                 </Tooltip>

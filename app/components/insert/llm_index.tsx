@@ -39,10 +39,12 @@ export default function InsertLLMTaskDialog({
     onClose: () => void;
     onCancel: () => void
 }) {
+    // sys const
     const apiUrl = getLocalStorage("apiUrl", "local");
     const navigate = useNavigate();
     const { pushMsg, pushError } = useErrorMsg();
 
+    // state variables
     const [inserting, setInserting] = useState(false);
     const [tasks, setTasks] = useState<LLMTaskInfo[]>([]);
     const [tranLang, setTranLang] = useState<LanguageKey>("en");

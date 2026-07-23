@@ -1,3 +1,5 @@
+export const UI_VERSION = "3.0.3";
+
 export const Language = {
     en: "English",
     ja: "Japanese",

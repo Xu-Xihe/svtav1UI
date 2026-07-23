@@ -4,11 +4,9 @@ import { useState, useEffect } from "react";
 import { useErrorMsg } from "~/components/error_popout";
 import { getLocalStorage } from "~/hooks/storage";
 import { api } from "~/hooks/api";
-import type { GeneralSettings } from "~/hooks/model";
+import { type GeneralSettings, UI_VERSION } from "~/hooks/model";
 import { SettingItemFrame, SettingTitleFrame } from "~/routes/settings/components/frame";
 import { SettingSlider } from "~/routes/settings/components/slider";
-
-const UI_VERSION = "3.0.0";
 
 export default function SystemSettingPage() {
     const apiUrl = getLocalStorage("apiUrl", "local");
