@@ -127,7 +127,6 @@ export default function InsertTaskDialog({
         if (retry_task) {
             decodeTaskInfo(retry_task)
                 .then(([tasks, output_path, settings, insertSettings]) => {
-                    console.log("Decoded retry task:", tasks, output_path, settings, insertSettings);
                     setTasks(tasks);
                     setOutputPath(output_path);
                     setSettings(settings);

@@ -66,10 +66,10 @@ export const useErrorMsg = create<ErrorMsgState>((set, get) => ({
     },
 
     setOpen: (state) => {
-        if (!get().open && state) {
-            set({ msg: [] });
-        }
-        set({ open: state });
+        set({
+            open: state,
+            msg: [],
+        });
     },
 }));
 

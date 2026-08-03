@@ -169,7 +169,11 @@ class FileOprations:
             "-v",
             "error",
             "-show_entries",
-            "stream=codec_type,codec_name,width,height,avg_frame_rate,sample_aspect_ratio,bit_rate,duration,pix_fmt,color_space,color_transfer,color_primaries",
+            "stream="
+            "codec_type,codec_name,width,height,"
+            "avg_frame_rate,sample_aspect_ratio,bit_rate,duration,"
+            "pix_fmt,color_space,color_transfer,color_primaries,"
+            "sample_rate,channels,channel_layout",
             "-of",
             "json",
             str(path.resolve()),
@@ -203,6 +207,12 @@ class FileOprations:
         if Codec.get(video["codec_name"]) is None:
             raise ValueError(f"Unsupported codec: {video['codec_name']}")
 
+        if not audio:
+            audio["bit_rate"] = 0
+
+        elif not (audio.get("bit_rate") and audio["bit_rate"].isdigit()):
+            audio["bit_rate"] = 128000  # Default to 128 kbps
+
         return FileInfo(
             path=path,
             size=path.stat().st_size,
@@ -225,11 +235,7 @@ class FileOprations:
                 else 0
             ),
             duration=float(video["duration"]),
-            audio_bit_rate=(
-                int(audio["bit_rate"])
-                if audio.get("bit_rate") and audio["bit_rate"].isdigit()
-                else 128000
-            ),
+            audio_bit_rate=(int(audio["bit_rate"])),
         )
 
     @classmethod

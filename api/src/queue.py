@@ -40,11 +40,11 @@ class Queue:
 
         if self.is_running:
             data.consumed_time = (
-                datetime.now(timezone.utc) - data.start_time + self.suspend_total
+                datetime.now(timezone.utc) - data.start_time - self.suspend_total
             )
         else:
             data.consumed_time = (
-                self.suspend_timer - data.start_time + self.suspend_total
+                self.suspend_timer - data.start_time - self.suspend_total
             )
 
         cpu = psutil.cpu_percent()
@@ -261,7 +261,7 @@ class Queue:
     async def _success(self, task: ApiWaiting):
         total_time = datetime.now(timezone.utc) - self.suspend_total
         if isinstance(self.running, tuple):
-            total_time -= self.running[0].progress.start_time
+            total_time -= min(r.progress.start_time for r in self.running)
         elif isinstance(self.running, Transcode) or isinstance(self.running, Whisper):
             total_time -= self.running.progress.start_time
         else:

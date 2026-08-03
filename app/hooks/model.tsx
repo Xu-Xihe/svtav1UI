@@ -1,4 +1,4 @@
-export const UI_VERSION = "3.0.3";
+export const UI_VERSION = "3.0.4";
 
 export const Language = {
     en: "English",

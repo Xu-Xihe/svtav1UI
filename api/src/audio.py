@@ -72,6 +72,9 @@ class Audio:
         except asyncio.CancelledError as e:
             await self.cancel(str(e))
             raise e
+        except Exception as e:
+            self.output.unlink(missing_ok=True)
+            raise e
 
     def _filter(self) -> list[str]:
         return [

@@ -62,6 +62,9 @@ class Transcode:
         except asyncio.CancelledError as e:
             await self.cancel(str(e))
             raise e
+        except Exception as e:
+            self.task.output.unlink(missing_ok=True)
+            raise e
 
     def _filter(self) -> list[str]:
         filters = []
@@ -88,9 +91,22 @@ class Transcode:
         filters.append(self.task.args.zscale)
         filters.append(f"format={self.task.args.pix_fmt}")
 
+        audios = []
+        for i, f in enumerate(self.task.input):
+            if f.audio_bit_rate > 0:
+                audios.append(
+                    f"[{i}:a:0]"
+                    "aformat=sample_rates=48000:channel_layouts=stereo,"
+                    "aresample=async=1:first_pts=0"
+                    f"[audio{i}];"
+                )
+            else:
+                audios.append(f"anullsrc=r=48000:cl=stereo:d={f.duration}[audio{i}];")
+
         return [
             "-filter_complex",
-            f"{''.join(f"[{i}:v:0][{i}:a:0]" for i in range(len(self.task.input)))}"
+            f"{''.join(audios)}"
+            f"{''.join(f"[{i}:v:0][audio{i}]" for i in range(len(self.task.input)))}"
             f"concat=n={len(self.task.input)}:v=1:a=1[outv][outa];"
             f"[outv]{','.join(filters)}[v]",
             "-map",
@@ -103,7 +119,7 @@ class Transcode:
         cmd = [
             "ffmpeg",
             "-v",
-            "quiet",
+            "error",
             "-progress",
             "pipe:1",
             "-y" if self.task.settings.overwrite else "-n",

@@ -43,10 +43,16 @@ class Whisper:
         return self
 
     def resume(self):
-        psutil.Process(self.proc.pid).resume()
+        try:
+            psutil.Process(self.proc.pid).resume()
+        except psutil.NoSuchProcess:
+            pass  # Process already terminated, nothing to resume
 
     def pause(self):
-        psutil.Process(self.proc.pid).suspend()
+        try:
+            psutil.Process(self.proc.pid).suspend()
+        except psutil.NoSuchProcess:
+            pass  # Process already terminated, nothing to resume
 
     async def cancel(self, sig: str):
         await self.monitor.cancel(sig)
@@ -61,6 +67,9 @@ class Whisper:
             await asyncio.to_thread(self._callback)
         except asyncio.CancelledError as e:
             await self.cancel(str(e))
+            raise e
+        except Exception as e:
+            self.output.unlink(missing_ok=True)
             raise e
 
     def _command(self) -> list[str]:

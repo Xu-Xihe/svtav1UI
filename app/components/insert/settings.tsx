@@ -164,7 +164,7 @@ export function SettingsPanel({ settings, insert, onChangeSettings, onChangeInse
                     </Typography>
                     <Switch
                         disabled={!subState}
-                        checked={insert.subtitle !== undefined}
+                        checked={insert.subtitle ? true : false}
                         onChange={(e) => {
                             onChangeInsert({
                                 ...insert,

@@ -68,7 +68,6 @@ function throttle<T extends (...args: any[]) => void>(
 export default function Waiting() {
     const apiUrl = getLocalStorage("apiUrl", "local");
     const { pushMsg, pushError } = useErrorMsg();
-    const containerRef = useRef<HTMLDivElement | null>(null);
     const [scrollTop, setScrollTop] = useLocalStorage("scrollTop", true, "local");
 
     const [waitingInfo, setWaitingInfo] = useState<ApiWaiting[]>([]);
@@ -201,7 +200,7 @@ export default function Waiting() {
             width: "100%",
             height: "100%",
         }}>
-            <TableContainer component={Box} ref={containerRef}>
+            <TableContainer component={Box}>
                 <Table sx={{ width: "100%" }} stickyHeader>
                     <TableHead>
                         <TableRow>

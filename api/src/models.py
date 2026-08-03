@@ -3,7 +3,7 @@ from typing import Optional, Literal
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
-VERSION = "3.0.3"
+VERSION = "3.0.4"
 
 
 VideoSuffixs = [
@@ -91,10 +91,10 @@ class FileInfo(BaseModel):
     def validate_audio_bit_rate(cls, v):
         if not isinstance(v, int):
             return 128000
-        elif v < 128000:
+        elif v > 256000:
+            return 256000
+        elif v < 128000 and v > 0:
             return 128000
-        elif v > 192000:
-            return 192000
         else:
             return v
 
