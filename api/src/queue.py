@@ -162,11 +162,9 @@ class Queue:
             # Wait for suspend to be cleared
             await self.suspend_loop.wait()
 
-            task = await self._preprocess()
             # Get Task
-            if isinstance(task, bool):
-                continue
-            elif task is None:
+            task = await self._preprocess()
+            if task is None:
 
                 # Process LLM tasks if any
                 row = db.fetchone("SELECT 1 FROM llm_waiting LIMIT 1;")
@@ -235,8 +233,12 @@ class Queue:
                     LLM.insert(LLM.tran_from_taskinfo(task))
 
     async def _preprocess(self):
-        task = await PlanUtils.get_next()
-        return task
+        try:
+            task = await PlanUtils.get_next(self.pause)
+        except Exception:
+            return None
+        else:
+            return task
 
     async def _failed(self, task: ApiWaiting, error: str):
         task.has_retry += 1

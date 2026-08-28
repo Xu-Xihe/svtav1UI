@@ -9,6 +9,6 @@ export default defineConfig({
     watch: {
       ignored: ["**/node_modules/**", "**/.git/**", "**/dist/**", "**/build/**", "**/cache/**"],
     },
-    port: 8888,
+    port: 8889,
   },
 });

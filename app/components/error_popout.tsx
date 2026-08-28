@@ -1,138 +1,135 @@
-import { Alert, IconButton, Box, Collapse } from "@mui/material";
+import { IconButton } from "@mui/material";
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
-import { create } from "zustand";
-import { useEffect, useState } from "react";
-import { HTTPError } from "ky";
+import { enqueueSnackbar, closeSnackbar, type VariantType } from "notistack";
+import { HTTPError, TimeoutError } from "ky";
 
-interface ErrorMsgState {
-    msg: { id: string; text: string; level: "error" | "warning" | "info" | "success" }[];
-    open: boolean;
-    pushMsg: (text: string, level?: "error" | "warning" | "info" | "success") => void;
-    pushError: (error: unknown, prefix?: string) => Promise<void>;
-    delMsg: (id: string) => void;
-    setOpen: (open: boolean) => void;
+
+export let openMsg = true;
+
+export function pushMsg(
+    text: string,
+    level: VariantType = "info"
+) {
+    if (!openMsg) return;
+
+    enqueueSnackbar(text, {
+        variant: level,
+        action: (snackbarId) => (
+            <IconButton
+                onClick={() => closeSnackbar(snackbarId)}
+                sx={{ borderRadius: 1, p: 0.5 }}
+            >
+                <CloseRoundedIcon sx={{ color: "white" }} />
+            </IconButton>
+        ),
+        autoHideDuration: 6000,
+        preventDuplicate: true,
+    });
 }
 
-export const useErrorMsg = create<ErrorMsgState>((set, get) => ({
-    msg: [],
-    open: true,
 
-    pushMsg: (text, level = "error") => {
-        if (!get().open) return;
-        const id = Date.now() + Math.random().toString(16).slice(2);
-        set((state) => ({
-            msg: [...state.msg, { id, text, level }],
-        }));
-    },
+export function pushError(
+    error: unknown,
+    prefix = "",
+) {
+    if (!openMsg) return;
 
-    pushError: async (error, prefix = "") => {
-        let text = "";
+    let text = "";
 
-        try {
-            if (error instanceof HTTPError) {
-                try {
-                    const res = await error.response.json();
-                    const code = res?.code ?? "";
-                    const detail = res?.detail ?? res?.msg ?? "";
-                    text = [code, detail].filter(Boolean).join(" ");
-                } catch {
-                    text = await error.response.text();
-                }
+    try {
+        if (error instanceof HTTPError) {
+            const response = error.response;
+
+            const parts: string[] = [];
+
+            if (response.status) {
+                parts.push(`HTTP ${response.status}`);
             }
-            else if (error instanceof Error) {
-                if (error.name === "TypeError") {
-                    text = "Network request failed (possibly offline or CORS issue)";
-                } else if (error.name === "AbortError") {
-                    text = "Request aborted";
-                } else {
-                    text = error.message;
-                }
+
+            if (response.statusText) {
+                parts.push(response.statusText);
+            }
+
+            const data = error.data;
+
+            if (
+                typeof data === "object" &&
+                "detail" in data &&
+                typeof data.detail === "string"
+            ) {
+                parts.push(data.detail);
             }
             else {
-                text = String(error);
+                parts.push("Unknown error.");
             }
-        } catch {
-            text = "Unknown error";
+
+            text = parts.join(" - ");
         }
 
-        const finalText = prefix ? `${prefix.endsWith(":") ? prefix : `${prefix}:`} ${text}` : text;
-        get().pushMsg(finalText, "error");
-    },
+        else if (error instanceof TimeoutError) {
+            text = "Request timeout";
+        }
 
-    delMsg: (id) => {
-        set((state) => ({
-            msg: state.msg.filter((m) => m.id !== id)
-        }));
-    },
+        else if (
+            error instanceof DOMException &&
+            error.name === "AbortError"
+        ) {
+            text = "Request aborted";
+        }
 
-    setOpen: (state) => {
-        set({
-            open: state,
-            msg: [],
-        });
-    },
-}));
+        else if (error instanceof Error) {
+            const msg = error.message;
 
-export default function ErrorPopout() {
-    const { msg, delMsg, open } = useErrorMsg();
-    const [visible, setVisible] = useState<Record<string, boolean>>({});
-
-    useEffect(() => {
-        msg.forEach(m => {
-            if (!(m.id in visible)) {
-                setVisible(prev => ({ ...prev, [m.id]: false }));
-                setTimeout(() => {
-                    setVisible(prev => ({ ...prev, [m.id]: true }));
-                    setTimeout(() => handleClose(m.id), 6000);
-                }, 10);
+            if (
+                error.name === "TypeError" ||
+                msg.includes("Failed to fetch") ||
+                msg.includes("NetworkError") ||
+                msg.includes("fetch failed") ||
+                msg.includes("ECONNREFUSED") ||
+                msg.includes("ECONNRESET") ||
+                msg.includes("ENOTFOUND") ||
+                msg.includes("ERR_NETWORK")
+            ) {
+                text = "Unable to connect to server";
+            } else {
+                text = msg;
             }
-        });
-    }, [msg]);
+        }
 
-    const handleClose = (id: string) => {
-        setVisible(prev => ({ ...prev, [id]: false }));
-        setTimeout(() => delMsg(id), 300);
-    };
+        else if (typeof error === "string") {
+            text = error;
+        }
 
-    if (!open) return null;
+        else {
+            try {
+                text = JSON.stringify(error);
+            } catch {
+                text = String(error);
+            }
+        }
+    } catch {
+        text = "Unknown error";
+    }
 
-    else
-        return (
-            <Box
-                sx={{
-                    position: "fixed",
-                    bottom: 16,
-                    left: 16,
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 1,
-                    zIndex: 8889,
-                }}
-            >
-                {msg.map((m) => (
-                    <Collapse key={m.id} in={visible[m.id]} timeout={300}>
-                        <Box sx={{ transition: "margin 0.3s" }}>
-                            <Alert
-                                variant="filled"
-                                severity={m.level}
-                                sx={{
-                                    width: 368,
-                                    wordBreak: "break-word",
-                                }}
-                                action={
-                                    <IconButton
-                                        onClick={() => handleClose(m.id)}
-                                        sx={{ borderRadius: 1, p: 0.5 }}
-                                    >
-                                        <CloseRoundedIcon sx={{ color: "white" }} />
-                                    </IconButton>
-                                }
-                            >
-                                {m.text}
-                            </Alert>
-                        </Box>
-                    </Collapse>
-                ))}
-            </Box>
-        );
+    if (!text) {
+        text = "Unknown error";
+    }
+
+    const finalText = prefix
+        ? `${prefix.endsWith(":") ? prefix : `${prefix}:`} ${text}`
+        : text;
+
+    pushMsg(finalText, "error");
+}
+
+export function clearAllMsg() {
+    closeSnackbar();
+}
+
+
+export function setOpenMsg(open: boolean) {
+    if (openMsg === false && open === true) {
+        clearAllMsg();
+    }
+    openMsg = open;
 }

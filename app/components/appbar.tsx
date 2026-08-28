@@ -21,7 +21,7 @@ import { useNavigate } from "react-router";
 import { useQuery } from '@tanstack/react-query';
 
 import { api } from "../hooks/api";
-import { useErrorMsg } from "../components/error_popout";
+import { setOpenMsg, pushError } from "../components/error_popout";
 import DisconnectBackdrop from "./disconnect_backdrop";
 import useLocalStorage, { getLocalStorage } from "../hooks/storage";
 import SchedualPopout from "./schedual_popout";
@@ -30,7 +30,6 @@ import SchedualPopout from "./schedual_popout";
 export default function AppBarComponent() {
     const apiUrl = getLocalStorage("apiUrl", "local");
     const navigate = useNavigate();
-    const { setOpen, pushError } = useErrorMsg();
 
     const theme = useTheme();
     const { setMode } = useColorScheme();
@@ -47,12 +46,12 @@ export default function AppBarComponent() {
             try {
                 await api.get(`${apiUrl}/health`);
                 setApiConnect(true);
-                setOpen(true);
+                setOpenMsg(true);
 
             }
             catch {
                 setApiConnect(false);
-                setOpen(false);
+                setOpenMsg(false);
             }
             try {
                 const res = await api.get(`${apiUrl}/task/status`).json<boolean>();
@@ -130,7 +129,7 @@ export default function AppBarComponent() {
                         display: 'flex',
                         gap: 1,
                     }}>
-                        <IconButton onClick={() => setPlanOpen(true)} disabled>
+                        <IconButton onClick={() => setPlanOpen(true)}>
                             <PendingActionsRoundedIcon />
                         </IconButton>
                         <Tooltip title={<>

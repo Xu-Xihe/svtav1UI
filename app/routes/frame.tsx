@@ -67,7 +67,6 @@ export default function Home() {
                 display: 'flex',
                 justifyContent: 'flex-start',
                 alignItems: 'center',
-                overflowY: 'auto',
                 backgroundColor: (theme) => theme.vars?.palette.background.default,
             }}>
                 <Box sx={{
@@ -81,6 +80,11 @@ export default function Home() {
                     flexGrow: 0,
                     p: 0,
                     m: 0,
+                    overflowY: 'auto',
+                    scrollbarWidth: "none",
+                    "&::-webkit-scrollbar": {
+                        display: "none",
+                    },
                 }}>
                     {Object.entries({
                         "Queue": [
@@ -157,7 +161,8 @@ export default function Home() {
                     justifyContent: 'flex-start',
                     alignItems: 'flex-start',
                     width: `calc(100vw - ${drawerWidth}px)`,
-                    height: "100%",
+                    height: `calc(100vh - 68px)`,
+                    overflowY: 'auto',
                 }}>
                     <Outlet />
                 </Box>

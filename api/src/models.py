@@ -3,7 +3,7 @@ from typing import Optional, Literal
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
-VERSION = "3.0.4"
+VERSION = "3.1.0"
 
 
 VideoSuffixs = [

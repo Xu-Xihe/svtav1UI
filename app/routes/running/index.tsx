@@ -2,7 +2,7 @@ import { Box, Divider, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
-import { useErrorMsg } from "~/components/error_popout";
+import { pushError } from "~/components/error_popout";
 import { getLocalStorage } from "~/hooks/storage";
 import { NoContent } from '~/components/no_content';
 import { api } from "~/hooks/api";
@@ -15,7 +15,6 @@ import { StateTitle } from "~/routes/running/state";
 
 export default function Running() {
     const apiUrl = getLocalStorage("apiUrl", "local");
-    const { pushError } = useErrorMsg();
 
     const [info, setInfo] = useState<ApiRunning | null>(null);
 

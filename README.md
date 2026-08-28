@@ -14,7 +14,7 @@
 	<img alt="GitHub Issues or Pull Requests" src="https://img.shields.io/github/issues/Xu-Xihe/svtav1UI">
  </div>
 
-## New 3.0 Version Released!!!
+## New 3.1 Version Released!!!
 
 New features:
 
@@ -25,6 +25,8 @@ New features:
 - Rebuild the task queue and the insert dialog.
 
 - Remove the support for vca, as it's unsuitable to our aim for fast and acceptable precision eta.
+
+- Task Schedule is available now!
 
 
 ## Features

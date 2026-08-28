@@ -14,7 +14,7 @@ import { useNavigate } from "react-router";
 
 import type { TaskInfo, GeneralSettings, TranscodeInfo, Taskls } from "~/hooks/model";
 import useLocalStorage from "~/hooks/storage";
-import { useErrorMsg } from "~/components/error_popout";
+import { pushMsg } from "~/components/error_popout";
 import { getEta } from "~/hooks/eta";
 import PathSelector from "~/components/pathselector";
 import { addNewFile, submitTaskInfo, submitTaskls, fetchSettings, decodeTaskInfo, multiTaskInfo } from "~/components/insert/function";
@@ -34,7 +34,6 @@ export default function InsertTaskDialog({
 }) {
     // sys const
     const navigate = useNavigate();
-    const { pushMsg } = useErrorMsg();
 
     // user variables
     const [tasks, setTasks] = useState<Taskls[]>([]);

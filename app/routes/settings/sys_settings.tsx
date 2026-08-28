@@ -1,7 +1,7 @@
 import { Box, Divider, Switch, Typography } from '@mui/material';
 import { useState, useEffect } from "react";
 
-import { useErrorMsg } from "~/components/error_popout";
+import { pushError } from "~/components/error_popout";
 import { getLocalStorage } from "~/hooks/storage";
 import { api } from "~/hooks/api";
 import { type GeneralSettings, UI_VERSION } from "~/hooks/model";
@@ -10,8 +10,6 @@ import { SettingSlider } from "~/routes/settings/components/slider";
 
 export default function SystemSettingPage() {
     const apiUrl = getLocalStorage("apiUrl", "local");
-    const { pushError } = useErrorMsg();
-
     const defaultConfig = {
         overwrite: false,
         delete_source: true,

@@ -1,4 +1,4 @@
-import { useErrorMsg } from "~/components/error_popout";
+import { pushMsg, pushError } from "~/components/error_popout";
 import { getLocalStorage } from "~/hooks/storage";
 import type {
     ApiPath,
@@ -12,7 +12,6 @@ import { api } from "~/hooks/api";
 import { getEta } from "~/hooks/eta";
 import type { InsertSettings } from "./settings";
 
-const { pushMsg, pushError } = useErrorMsg.getState();
 const apiUrl = getLocalStorage("apiUrl", "local");
 
 export async function addNewFile(path: string, pathls: string[], settings: GeneralSettings): Promise<Taskls[]> {

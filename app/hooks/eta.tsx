@@ -2,7 +2,7 @@ import { Tooltip, Typography } from "@mui/material";
 
 import type { TaskInfo, FileETAInfo } from "./model";
 import { api } from "./api";
-import { useErrorMsg } from "../components/error_popout";
+import { pushError } from "../components/error_popout";
 import { getLocalStorage } from "../hooks/storage";
 
 
@@ -32,7 +32,6 @@ function showEta(seconds: number) {
 
 export async function getEta(task: TaskInfo | FileETAInfo) {
     const apiUrl = getLocalStorage("apiUrl", "local");
-    const { pushError } = useErrorMsg.getState();
 
     try {
         const res = await api.post(`${apiUrl}/plan/eta`, { json: task }).json<number>();

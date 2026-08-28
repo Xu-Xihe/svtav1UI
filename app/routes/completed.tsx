@@ -20,7 +20,7 @@ import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import { useEffect, useState } from 'react';
 import React from 'react';
 
-import { useErrorMsg } from "../components/error_popout";
+import { pushError } from "../components/error_popout";
 import { getLocalStorage } from "../hooks/storage";
 import { FileInfoComponent } from "../components/info";
 import { api } from "../hooks/api";
@@ -37,8 +37,6 @@ interface ApiCompleted {
 
 export default function Completed() {
     const apiUrl = getLocalStorage("apiUrl", "local");
-    const { pushError } = useErrorMsg();
-
     const [completedInfo, setCompletedInfo] = useState<ApiCompleted[]>([]);
     const [taskSelected, setTaskSelected] = useState<number>(-1);
     const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
@@ -65,14 +63,7 @@ export default function Completed() {
     if (completedInfo.length === 0) { return (<NoContent title="completed" />); }
 
     return (
-        <Box sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignContent: "start",
-            justifyContent: "start",
-            width: "100%",
-            height: "100%",
-        }}>
+        <>
             <Dialog open={clearConfirmOpen} onClose={() => setClearConfirmOpen(false)} >
                 <DialogTitle>Are you sure to clear the completed tasks list?</DialogTitle>
                 <DialogActions>
@@ -80,15 +71,30 @@ export default function Completed() {
                     <Button onClick={clearList} variant='contained'>Clear</Button>
                 </DialogActions>
             </Dialog>
-            <TableContainer component={Box}>
-                <Table sx={{ width: "100%" }} stickyHeader>
+            <TableContainer
+                component={Box}
+                sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignContent: "start",
+                    justifyContent: "start",
+                    width: "100%",
+                    height: "100%",
+                    overflowY: "auto",
+                    scrollbarWidth: "none",
+                    "&::-webkit-scrollbar": {
+                        display: "none",
+                    },
+                }}
+            >
+                <Table stickyHeader>
                     <TableHead>
                         <TableRow>
                             <TableCell>Input</TableCell>
-                            <TableCell>Output</TableCell>
-                            <TableCell sx={{ minWidth: 183 }} align='center'>Total Consumed Time</TableCell>
-                            <TableCell sx={{ minWidth: 188 }} align='center'>Finished Time</TableCell>
-                            <TableCell sx={{ minWidth: 163 }} align='center'>
+                            <TableCell sx={{ width: "100%" }}>Output</TableCell>
+                            <TableCell sx={{ whiteSpace: "nowrap" }} align='center'>Total Consumed Time</TableCell>
+                            <TableCell sx={{ whiteSpace: "nowrap" }} align='center'>Finished Time</TableCell>
+                            <TableCell sx={{ whiteSpace: "nowrap" }} align='center'>
                                 <Button
                                     variant="contained"
                                     color="primary"
@@ -107,10 +113,10 @@ export default function Completed() {
                                     onClick={() => setTaskSelected(taskSelected === index ? -1 : index)}
                                 >
                                     <TableCell>{task.input.map((file) => file.path.split("/").pop()).join(", ")}</TableCell>
-                                    <TableCell>{task.output.path}</TableCell>
-                                    <TableCell align='center'>{task.total_consumed}</TableCell>
-                                    <TableCell align='center'>{new Date(task.finished_time).toLocaleString()}</TableCell>
-                                    <TableCell align='center'>
+                                    <TableCell sx={{ width: "100%", overflowWrap: "anywhere" }}>{task.output.path}</TableCell>
+                                    <TableCell sx={{ whiteSpace: "nowrap" }} align='center'>{task.total_consumed}</TableCell>
+                                    <TableCell sx={{ whiteSpace: "nowrap" }} align='center'>{new Date(task.finished_time).toLocaleString()}</TableCell>
+                                    <TableCell sx={{ whiteSpace: "nowrap" }} align='center'>
                                         <IconButton disableRipple>
                                             {taskSelected === index ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
                                         </IconButton>
@@ -162,6 +168,6 @@ export default function Completed() {
                     </TableBody>
                 </Table>
             </TableContainer >
-        </Box >
+        </>
     );
 }

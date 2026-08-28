@@ -36,7 +36,7 @@ import dayjs, { Dayjs, type ManipulateType } from 'dayjs';
 import { useEffect, useState } from "react";
 
 import { api } from "../hooks/api";
-import { useErrorMsg } from "../components/error_popout";
+import { pushError } from "../components/error_popout";
 import useLocalStorage, { getLocalStorage } from "../hooks/storage";
 import type { TaskSchedule } from "../hooks/model";
 
@@ -112,8 +112,6 @@ const IntervalPicker = ({ org = 0, onChange, onClose }: { org?: number; onChange
 
 export default function SchedualPopout({ onClose }: { onClose: () => void }) {
     const apiUrl = getLocalStorage("apiUrl", "local");
-    const { pushError } = useErrorMsg();
-
     const [schedual, setSchedual] = useState<TaskSchedule>({
         on: false,
         finish_time: dayjs().toISOString(),

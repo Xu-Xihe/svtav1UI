@@ -12,7 +12,7 @@ import {
 import AdjustRoundedIcon from '@mui/icons-material/AdjustRounded';
 import { useState, useEffect } from "react";
 
-import { useErrorMsg } from "~/components/error_popout";
+import { pushError } from "~/components/error_popout";
 import { getLocalStorage } from "~/hooks/storage";
 import { api } from "~/hooks/api";
 import type { TranslatorSettings } from "~/hooks/model";
@@ -31,8 +31,6 @@ function split_llm_key(current: string) {
 
 export function LLMSettingPage({ embedded = false }: { embedded?: boolean }) {
     const apiUrl = getLocalStorage("apiUrl", "local");
-    const { pushError } = useErrorMsg();
-
     const defaultConfig = {
         llm_type: "openai-api" as "openai-api" | "llama.cpp" | "mlx",
         llm_key: null,

@@ -16,7 +16,7 @@ import { CssBaseline, InitColorSchemeScript } from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
 import { theme } from "./theme";
 
-import ErrorPopout from "./components/error_popout";
+import { SnackbarProvider } from 'notistack'
 
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -59,9 +59,10 @@ export default function App() {
     <StrictMode>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider theme={theme}>
-          <CssBaseline />
-          <ErrorPopout />
-          <Outlet />
+          <SnackbarProvider maxSnack={8}>
+            <CssBaseline />
+            <Outlet />
+          </SnackbarProvider>
         </ThemeProvider>
       </QueryClientProvider>
     </StrictMode>

@@ -34,6 +34,7 @@ export function SettingTitleFrame({ title, reset, children }: { title: string, r
             display: "flex",
             justifyContent: "space-between",
             width: "100%",
+            height: 73,
             alignItems: "center",
             px: 3,
             py: 3,

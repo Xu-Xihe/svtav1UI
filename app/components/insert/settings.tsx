@@ -22,7 +22,7 @@ import { SettingSlider } from "~/routes/settings/components/slider";
 import { NobarOverflow } from "~/components/insert/frame";
 import { fetchSettings } from "~/components/insert/function";
 import { getLocalStorage } from "~/hooks/storage";
-import { useErrorMsg } from "~/components/error_popout";
+import { pushError } from "~/components/error_popout";
 import { api } from "~/hooks/api";
 
 export interface InsertSettings {
@@ -63,7 +63,6 @@ export function SettingItemLineFrame({ title, desc = "", children }: { title: st
 export function SettingsPanel({ settings, insert, onChangeSettings, onChangeInsert }: { settings: GeneralSettings; insert: InsertSettings; onChangeSettings: (settings: GeneralSettings) => void; onChangeInsert: (insert: InsertSettings) => void }) {
     const [extend, setExtend] = useState(false);
     const [subState, setSubState] = useState(false);
-    const { pushError } = useErrorMsg.getState();
 
     useEffect(() => {
         const apiUrl = getLocalStorage("apiUrl", "local");

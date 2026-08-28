@@ -18,12 +18,12 @@ import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import VerticalAlignTopRoundedIcon from '@mui/icons-material/VerticalAlignTopRounded';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { DragDropProvider } from '@dnd-kit/react';
 import { useSortable } from '@dnd-kit/react/sortable';
 
-import { useErrorMsg } from "../components/error_popout";
+import { pushMsg, pushError } from "../components/error_popout";
 import useLocalStorage, { getLocalStorage } from "../hooks/storage";
 import { FileInfoComponent, TaskInfoComponent } from "../components/info";
 import { api } from "../hooks/api";
@@ -67,7 +67,6 @@ function throttle<T extends (...args: any[]) => void>(
 
 export default function Waiting() {
     const apiUrl = getLocalStorage("apiUrl", "local");
-    const { pushMsg, pushError } = useErrorMsg();
     const [scrollTop, setScrollTop] = useLocalStorage("scrollTop", true, "local");
 
     const [waitingInfo, setWaitingInfo] = useState<ApiWaiting[]>([]);
@@ -134,8 +133,8 @@ export default function Waiting() {
                 onClick={() => setTaskExtend(taskExtend === task.uid ? -1 : task.uid || -1)}
             >
                 <TableCell>{task.uid}</TableCell>
-                <TableCell>{task.input.map((file) => file.path.split("/").pop()).join(", ")}</TableCell>
-                <TableCell>{task.output}</TableCell>
+                <TableCell sx={{ whiteSpace: "nowrap" }}>{task.input.map((file) => file.path.split("/").pop()).join(", ")}</TableCell>
+                <TableCell sx={{ width: "100%", overflowWrap: "anywhere" }}>{task.output}</TableCell>
                 <TableCell align='center'>
                     <EtaText eta={task.eta_v} />
                 </TableCell>
@@ -192,134 +191,140 @@ export default function Waiting() {
     if (waitingInfo.length === 0) { return (<NoContent title="waiting" />); }
 
     return (
-        <Box sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignContent: "start",
-            justifyContent: "start",
-            width: "100%",
-            height: "100%",
-        }}>
-            <TableContainer component={Box}>
-                <Table sx={{ width: "100%" }} stickyHeader>
-                    <TableHead>
-                        <TableRow>
-                            <TableCell sx={{ minWidth: 18 }} align='center'>UID</TableCell>
-                            <TableCell>Input</TableCell>
-                            <TableCell>Output</TableCell>
-                            <TableCell sx={{ minWidth: 218 }} align='center'>
-                                <EtaText eta={waitingInfo.reduce((sum, task) => sum + Math.max(task.eta_v, 0), 0)} title="Total ETA: " />
-                            </TableCell>
-                            <TableCell sx={{ minWidth: 8 }} align='center'>Retry</TableCell>
-                            <TableCell sx={{ minWidth: 8 }} align='center'>
-                                <Tooltip title="Auto scroll to top when move task to top." placement="top" arrow>
-                                    <Switch checked={scrollTop} onChange={(_, v) => setScrollTop(v)} />
-                                </Tooltip>
-                            </TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        <DragDropProvider
-                            onDragEnd={({ operation }) => {
-                                // @ts-ignore
-                                const newIndex = operation.source?.index;
-                                // @ts-ignore
-                                const oldIndex = operation.source?.initialIndex;
+        <TableContainer
+            component={Box}
+            sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignContent: "start",
+                justifyContent: "start",
+                width: "100%",
+                height: "100%",
+                overflowY: "auto",
+                scrollbarWidth: "none",
+                "&::-webkit-scrollbar": {
+                    display: "none",
+                },
+            }}
+        >
+            <Table sx={{ width: "100%" }} stickyHeader>
+                <TableHead>
+                    <TableRow>
+                        <TableCell align='center'>UID</TableCell>
+                        <TableCell>Input</TableCell>
+                        <TableCell>Output</TableCell>
+                        <TableCell sx={{ whiteSpace: "nowrap" }} align='center'>
+                            <EtaText eta={waitingInfo.reduce((sum, task) => sum + Math.max(task.eta_v, 0), 0)} title="Total ETA: " />
+                        </TableCell>
+                        <TableCell align='center'>Retry</TableCell>
+                        <TableCell align='center'>
+                            <Tooltip title="Auto scroll to top when move task to top." placement="top" arrow>
+                                <Switch checked={scrollTop} onChange={(_, v) => setScrollTop(v)} />
+                            </Tooltip>
+                        </TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    <DragDropProvider
+                        onDragEnd={({ operation }) => {
+                            // @ts-ignore
+                            const newIndex = operation.source?.index;
+                            // @ts-ignore
+                            const oldIndex = operation.source?.initialIndex;
 
-                                if (newIndex === undefined || oldIndex === undefined || newIndex === oldIndex) return;
+                            if (newIndex === undefined || oldIndex === undefined || newIndex === oldIndex) return;
 
-                                resortTask(oldIndex, newIndex);
-                            }}
-                            onDragStart={() => { setTaskExtend(-1) }}
-                        >
-                            {waitingInfo.map((task, index) => (
-                                <React.Fragment key={task.uid}>
-                                    <SortableFileInfo task={task} index={index} />
-                                    <TableRow sx={{ p: 0, m: 0 }}>
-                                        <TableCell colSpan={6} sx={{ p: 0, m: 0 }}>
-                                            <Collapse in={taskExtend === task.uid} timeout="auto" unmountOnExit>
+                            resortTask(oldIndex, newIndex);
+                        }}
+                        onDragStart={() => { setTaskExtend(-1) }}
+                    >
+                        {waitingInfo.map((task, index) => (
+                            <React.Fragment key={task.uid}>
+                                <SortableFileInfo task={task} index={index} />
+                                <TableRow sx={{ p: 0, m: 0 }}>
+                                    <TableCell colSpan={6} sx={{ p: 0, m: 0 }}>
+                                        <Collapse in={taskExtend === task.uid} timeout="auto" unmountOnExit>
+                                            <Box sx={{
+                                                display: "flex",
+                                                flexDirection: "row",
+                                                alignContent: "start",
+                                                justifyContent: "space-between",
+                                                width: "100%",
+                                                gap: 1,
+                                                p: 3,
+                                            }}>
                                                 <Box sx={{
                                                     display: "flex",
-                                                    flexDirection: "row",
-                                                    alignContent: "start",
-                                                    justifyContent: "space-between",
-                                                    width: "100%",
-                                                    gap: 1,
-                                                    p: 3,
+                                                    justifyContent: "start",
+                                                    flexDirection: "column",
+                                                    alignItems: "start",
+                                                    width: "33%",
+                                                    pr: 1,
                                                 }}>
-                                                    <Box sx={{
+                                                    <Typography variant="h5" gutterBottom>
+                                                        Input Info
+                                                    </Typography>
+                                                    <FileInfoComponent fileInfo={task.input} />
+                                                </Box>
+                                                <Box sx={{
+                                                    display: "flex",
+                                                    justifyContent: "start",
+                                                    flexDirection: "column",
+                                                    alignItems: "start",
+                                                    width: "34%",
+                                                    pr: 1,
+                                                }}>
+                                                    <Typography variant="h5" gutterBottom>
+                                                        Output Info
+                                                    </Typography>
+                                                    <TaskInfoComponent task={task} />
+                                                </Box>
+                                                <Box sx={{
+                                                    display: "flex",
+                                                    justifyContent: "start",
+                                                    flexDirection: "column",
+                                                    alignItems: "start",
+                                                    width: "33%",
+                                                }}>
+                                                    <Typography variant="h5" gutterBottom>
+                                                        FFmpeg Config
+                                                    </Typography>
+                                                    < Box sx={{
                                                         display: "flex",
-                                                        justifyContent: "start",
                                                         flexDirection: "column",
-                                                        alignItems: "start",
-                                                        width: "33%",
-                                                        pr: 1,
-                                                    }}>
-                                                        <Typography variant="h5" gutterBottom>
-                                                            Input Info
-                                                        </Typography>
-                                                        <FileInfoComponent fileInfo={task.input} />
-                                                    </Box>
-                                                    <Box sx={{
-                                                        display: "flex",
+                                                        alignContent: "start",
                                                         justifyContent: "start",
-                                                        flexDirection: "column",
-                                                        alignItems: "start",
-                                                        width: "34%",
-                                                        pr: 1,
+                                                        gap: 1,
                                                     }}>
-                                                        <Typography variant="h5" gutterBottom>
-                                                            Output Info
-                                                        </Typography>
-                                                        <TaskInfoComponent task={task} />
-                                                    </Box>
-                                                    <Box sx={{
-                                                        display: "flex",
-                                                        justifyContent: "start",
-                                                        flexDirection: "column",
-                                                        alignItems: "start",
-                                                        width: "33%",
-                                                    }}>
-                                                        <Typography variant="h5" gutterBottom>
-                                                            FFmpeg Config
-                                                        </Typography>
-                                                        < Box sx={{
-                                                            display: "flex",
-                                                            flexDirection: "column",
-                                                            alignContent: "start",
-                                                            justifyContent: "start",
-                                                            gap: 1,
-                                                        }}>
-                                                            {[
-                                                                ["Preset", task.settings.preset],
-                                                                ["Retry", task.settings.retry],
-                                                                ["Overshoot Pct", task.settings.overshoot_pct],
-                                                                ["Undershoot Pct", task.settings.undershoot_pct],
-                                                                ["Min Section Pct", task.settings.minsection_pct],
-                                                                ["Max Section Pct", task.settings.maxsection_pct],
-                                                                ["Keyint", task.settings.keyint],
-                                                                ["Lookahead", task.settings.lookahead],
-                                                                ["SCD", task.settings.scd ? "Enabled" : "Disabled"],
-                                                            ].map(([key, value]) => (
-                                                                <Typography key={key} sx={{
-                                                                    overflowWrap: "break-word",
-                                                                    wordBreak: "break-word",
-                                                                }}>
-                                                                    <b>{key}:</b> {value}
-                                                                </Typography>
-                                                            ))}
-                                                        </Box>
+                                                        {[
+                                                            ["Preset", task.settings.preset],
+                                                            ["Retry", task.settings.retry],
+                                                            ["Overshoot Pct", task.settings.overshoot_pct],
+                                                            ["Undershoot Pct", task.settings.undershoot_pct],
+                                                            ["Min Section Pct", task.settings.minsection_pct],
+                                                            ["Max Section Pct", task.settings.maxsection_pct],
+                                                            ["Keyint", task.settings.keyint],
+                                                            ["Lookahead", task.settings.lookahead],
+                                                            ["SCD", task.settings.scd ? "Enabled" : "Disabled"],
+                                                        ].map(([key, value]) => (
+                                                            <Typography key={key} sx={{
+                                                                overflowWrap: "break-word",
+                                                                wordBreak: "break-word",
+                                                            }}>
+                                                                <b>{key}:</b> {value}
+                                                            </Typography>
+                                                        ))}
                                                     </Box>
                                                 </Box>
-                                            </Collapse>
-                                        </TableCell>
-                                    </TableRow>
-                                </React.Fragment>
-                            ))}
-                        </DragDropProvider>
-                    </TableBody>
-                </Table>
-            </TableContainer>
-        </Box >
+                                            </Box>
+                                        </Collapse>
+                                    </TableCell>
+                                </TableRow>
+                            </React.Fragment>
+                        ))}
+                    </DragDropProvider>
+                </TableBody>
+            </Table>
+        </TableContainer>
     );
 }

@@ -21,7 +21,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from "react-router";
 
 import { getLocalStorage } from "~/hooks/storage";
-import { useErrorMsg } from "~/components/error_popout";
+import { pushMsg, pushError } from "~/components/error_popout";
 import type { LLMTaskInfo, ApiPath, LanguageKey } from '~/hooks/model';
 import { Language } from '~/hooks/model';
 import { LLMSettingPage } from "~/routes/settings/llm_settings";
@@ -42,7 +42,6 @@ export default function InsertLLMTaskDialog({
     // sys const
     const apiUrl = getLocalStorage("apiUrl", "local");
     const navigate = useNavigate();
-    const { pushMsg, pushError } = useErrorMsg();
 
     // state variables
     const [inserting, setInserting] = useState(false);

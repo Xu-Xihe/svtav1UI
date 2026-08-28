@@ -20,28 +20,21 @@ import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded';
 
 import { useEffect, useState } from 'react';
 
-import { useErrorMsg } from "../components/error_popout";
+import { pushMsg, pushError } from "../components/error_popout";
 import { getLocalStorage } from "../hooks/storage";
 import { api } from "../hooks/api";
-import type { FileInfo, GeneralSettings, TranscodeInfo } from "../hooks/model";
+import type { TaskInfo } from "../hooks/model";
 import InsertTaskDialog from '~/components/insert';
 import InsertLLMTaskDialog from '~/components/insert/llm_index';
 import { NoContent } from "../components/no_content";
 
-interface ApiFailed {
-    uid: number;
-    input: FileInfo[] | string;
-    output: string;
-    args: TranscodeInfo;
-    settings: GeneralSettings | null;
+interface ApiFailed extends TaskInfo {
     error: string[];
     time: string;
 }
 
 export default function Failed() {
     const apiUrl = getLocalStorage("apiUrl", "local");
-    const { pushMsg, pushError } = useErrorMsg();
-
     const [failedInfo, setFailedInfo] = useState<ApiFailed[]>([]);
     const [errorDialog, setErrorDialog] = useState<number>(-1);
     const [insertTask, setInsertTask] = useState<ApiFailed | null>(null);
@@ -145,58 +138,63 @@ export default function Failed() {
                     </Button>
                 </DialogActions>
             </Dialog>
-            <Box sx={{
-                display: "flex",
-                flexDirection: "column",
-                alignContent: "start",
-                justifyContent: "start",
-                width: "100%",
-                height: "100%",
-            }}>
-                <TableContainer component={Box}>
-                    <Table sx={{ width: "100%" }} stickyHeader>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Input</TableCell>
-                                <TableCell>Output</TableCell>
-                                <TableCell sx={{ width: 188 }}>Time</TableCell>
-                                <TableCell sx={{ width: 163 }}>
-                                    <Button
-                                        variant="contained"
-                                        color="primary"
-                                        onClick={() => setClearConfirmOpen(true)}
-                                    >
-                                        Clear List
-                                    </Button>
+            <TableContainer
+                component={Box}
+                sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignContent: "start",
+                    justifyContent: "start",
+                    width: "100%",
+                    height: "100%",
+                    scrollbarWidth: "none",
+                    "&::-webkit-scrollbar": {
+                        display: "none",
+                    },
+                }}
+            >
+                <Table stickyHeader>
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>Input</TableCell>
+                            <TableCell>Output</TableCell>
+                            <TableCell sx={{ whiteSpace: "nowrap" }}>Time</TableCell>
+                            <TableCell sx={{ whiteSpace: "nowrap" }}>
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    onClick={() => setClearConfirmOpen(true)}
+                                >
+                                    Clear List
+                                </Button>
+                            </TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {failedInfo.map((task, index) => (
+                            <TableRow key={index}>
+                                {typeof task.input === "object"
+                                    ? <TableCell>{task.input.map(file => file.path.split("/").slice(-1)[0]).join(", ")}</TableCell>
+                                    : <TableCell>{task.input}</TableCell>
+                                }
+                                <TableCell sx={{ width: "100%", overflowWrap: "anywhere" }}>{task.output}</TableCell>
+                                <TableCell sx={{ whiteSpace: "nowrap" }}>{new Date(task.time).toLocaleString()}</TableCell>
+                                <TableCell sx={{ gap: 1, whiteSpace: "nowrap" }}>
+                                    <IconButton onClick={() => { setErrorDialog(index) }}>
+                                        <InfoOutlineRoundedIcon />
+                                    </IconButton>
+                                    <IconButton onClick={() => { setInsertTask(task); }}>
+                                        <ReplayRoundedIcon />
+                                    </IconButton>
+                                    <IconButton onClick={() => deleteItem(task.uid!)}>
+                                        <DeleteRoundedIcon color='error' />
+                                    </IconButton>
                                 </TableCell>
                             </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {failedInfo.map((task, index) => (
-                                <TableRow key={index}>
-                                    {typeof task.input === "object"
-                                        ? <TableCell>{task.input.map(file => file.path.split("/").slice(-1)[0]).join(", ")}</TableCell>
-                                        : <TableCell>{task.input}</TableCell>
-                                    }
-                                    <TableCell>{task.output}</TableCell>
-                                    <TableCell>{new Date(task.time).toLocaleString()}</TableCell>
-                                    <TableCell sx={{ gap: 1 }}>
-                                        <IconButton onClick={() => { setErrorDialog(index) }}>
-                                            <InfoOutlineRoundedIcon />
-                                        </IconButton>
-                                        <IconButton onClick={() => { setInsertTask(task); }}>
-                                            <ReplayRoundedIcon />
-                                        </IconButton>
-                                        <IconButton onClick={() => deleteItem(task.uid!)}>
-                                            <DeleteRoundedIcon color='error' />
-                                        </IconButton>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-            </Box >
+                        ))}
+                    </TableBody>
+                </Table>
+            </TableContainer>
         </>
     );
 }

@@ -12,7 +12,7 @@ import { useNavigate } from "react-router";
 
 import useLocalStorage from "../hooks/storage";
 import { api } from "../hooks/api";
-import { useErrorMsg } from "../components/error_popout";
+import { pushError, setOpenMsg } from "../components/error_popout";
 
 interface UrlProps {
     protocol: string;
@@ -23,7 +23,6 @@ interface UrlProps {
 
 export default function Connection() {
     const [apiUrl, setApiUrl] = useLocalStorage("apiUrl", "", "local");
-    const { setOpen, pushError } = useErrorMsg();
     const navigate = useNavigate();
     const [urlProps, setUrlProps] = useState<UrlProps>({
         protocol: "http",
@@ -55,7 +54,7 @@ export default function Connection() {
     }, [apiUrl]);
 
     useEffect(() => {
-        setOpen(true);
+        setOpenMsg(true);
     }, []);
 
 

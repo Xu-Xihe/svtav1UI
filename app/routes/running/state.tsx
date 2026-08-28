@@ -13,14 +13,12 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 
 import { useState } from 'react';
 
-import { useErrorMsg } from "~/components/error_popout";
+import { pushMsg, pushError } from "~/components/error_popout";
 import { getLocalStorage } from "~/hooks/storage";
 import { api } from "~/hooks/api";
 
 
 const apiUrl = getLocalStorage("apiUrl", "local");
-const { pushMsg, pushError } = useErrorMsg.getState();
-
 
 export function StateTitle({ llm = false }: { llm?: boolean }) {
     const [pause, setPause] = useState(false);

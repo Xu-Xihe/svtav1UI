@@ -1,7 +1,7 @@
 import { Box, Divider, Switch } from '@mui/material';
 import { useState, useEffect } from "react";
 
-import { useErrorMsg } from "~/components/error_popout";
+import { pushError } from "~/components/error_popout";
 import { getLocalStorage } from "~/hooks/storage";
 import { api } from "~/hooks/api";
 import type { GeneralSettings } from "~/hooks/model";
@@ -10,8 +10,6 @@ import { SettingSlider } from "~/routes/settings/components/slider";
 
 export default function TranscodeSettingPage() {
     const apiUrl = getLocalStorage("apiUrl", "local");
-    const { pushError } = useErrorMsg();
-
     const defaultConfig = {
         preset: 6,
         max_bitrate_mb: 88.8,

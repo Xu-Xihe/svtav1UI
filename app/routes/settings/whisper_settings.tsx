@@ -2,7 +2,7 @@ import { Box, Divider, Tooltip, Typography, Collapse, Switch } from '@mui/materi
 import AdjustRoundedIcon from '@mui/icons-material/AdjustRounded';
 import { useState, useEffect } from "react";
 
-import { useErrorMsg } from "~/components/error_popout";
+import { pushError } from "~/components/error_popout";
 import { getLocalStorage } from "~/hooks/storage";
 import { api } from "~/hooks/api";
 import type { TranslatorSettings } from "~/hooks/model";
@@ -12,8 +12,6 @@ import PathSelector from "~/components/pathselector";
 
 export default function WhisperSettingPage() {
     const apiUrl = getLocalStorage("apiUrl", "local");
-    const { pushError } = useErrorMsg();
-
     const defaultConfig = {
         asr_model: null,
         max_length_segment: 38,

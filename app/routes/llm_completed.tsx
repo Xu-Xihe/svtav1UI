@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 
-import { useErrorMsg } from "../components/error_popout";
+import { pushError } from "../components/error_popout";
 import { getLocalStorage } from "../hooks/storage";
 import { api } from "../hooks/api";
 import { type LanguageKey, Language } from '../hooks/model';
@@ -30,8 +30,6 @@ interface ApiLLMCompleted {
 
 export default function LLMCompleted() {
     const apiUrl = getLocalStorage("apiUrl", "local");
-    const { pushError } = useErrorMsg();
-
     const [tasks, setTasks] = useState<ApiLLMCompleted[]>([]);
     const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
@@ -57,14 +55,7 @@ export default function LLMCompleted() {
     if (tasks.length === 0) { return (<NoContent title="LLM completed" />); }
 
     return (
-        <Box sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignContent: "start",
-            justifyContent: "start",
-            width: "100%",
-            height: "100%",
-        }}>
+        <>
             <Dialog open={clearConfirmOpen} onClose={() => setClearConfirmOpen(false)} >
                 <DialogTitle>Are you sure to clear the completed tasks list?</DialogTitle>
                 <DialogActions>
@@ -72,15 +63,29 @@ export default function LLMCompleted() {
                     <Button onClick={clearList} variant='contained'>Clear</Button>
                 </DialogActions>
             </Dialog>
-            <TableContainer component={Box}>
+            <TableContainer
+                component={Box}
+                sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignContent: "start",
+                    justifyContent: "start",
+                    width: "100%",
+                    height: "100%",
+                    scrollbarWidth: "none",
+                    "&::-webkit-scrollbar": {
+                        display: "none",
+                    },
+                }}
+            >
                 <Table sx={{ width: "100%" }} stickyHeader>
                     <TableHead>
                         <TableRow>
                             <TableCell>Input</TableCell>
                             <TableCell>Output</TableCell>
-                            <TableCell sx={{ minWidth: 163 }} align='center'>Original Language</TableCell>
-                            <TableCell sx={{ minWidth: 168 }} align='center'>Translated Language</TableCell>
-                            <TableCell sx={{ minWidth: 263 }} align='left'>
+                            <TableCell sx={{ whiteSpace: "nowrap" }} align='center'>Original Language</TableCell>
+                            <TableCell sx={{ whiteSpace: "nowrap" }} align='center'>Translated Language</TableCell>
+                            <TableCell sx={{ whiteSpace: "nowrap" }} align='left'>
                                 Finished Time
                                 <Button
                                     variant="contained"
@@ -96,16 +101,16 @@ export default function LLMCompleted() {
                     <TableBody>
                         {tasks.map((task, index) => (
                             <TableRow key={index} hover>
-                                <TableCell>{task.input}</TableCell>
-                                <TableCell>{task.output}</TableCell>
-                                <TableCell align='center'>{Language[task.org_lang]}</TableCell>
-                                <TableCell align='center'>{Language[task.tran_lang]}</TableCell>
-                                <TableCell align='left'>{new Date(task.finished_time).toLocaleString()}</TableCell>
+                                <TableCell sx={{ width: "50%", overflowWrap: "anywhere" }}>{task.input}</TableCell>
+                                <TableCell sx={{ width: "50%", overflowWrap: "anywhere" }}>{task.output}</TableCell>
+                                <TableCell sx={{ whiteSpace: "nowrap" }} align='center'>{Language[task.org_lang]}</TableCell>
+                                <TableCell sx={{ whiteSpace: "nowrap" }} align='center'>{Language[task.tran_lang]}</TableCell>
+                                <TableCell sx={{ whiteSpace: "nowrap" }} align='left'>{new Date(task.finished_time).toLocaleString()}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
             </TableContainer >
-        </Box >
+        </>
     );
 }

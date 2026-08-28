@@ -17,7 +17,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { api } from "~/hooks/api";
 import { getLocalStorage } from "~/hooks/storage";
-import { useErrorMsg } from "~/components/error_popout";
+import { pushMsg, pushError } from "~/components/error_popout";
 import type { ApiPath } from "~/hooks/model";
 
 
@@ -39,8 +39,6 @@ export default function PathSelector({
     addDir?: boolean
 }) {
     const apiUrl = getLocalStorage("apiUrl", "local");
-    const { pushMsg, pushError } = useErrorMsg();
-
     const [path, setPath] = useState("/");
     const [pathList, setPathList] = useState<ApiPath>({ dir: [], file: [] });
     const [newFolder, setNewFolder] = useState<string | null>(null);
@@ -114,7 +112,12 @@ export default function PathSelector({
             // Check if the path is valid
             const type_check = await check_file(path);
 
-            if (type === "any") { is_enter ? onEnter(path) : onClose(path); }
+            if (type === "any") {
+                let res = path;
+                if (!type_check)
+                    res = path.endsWith("/") ? path : path + "/";
+                is_enter ? onEnter(res) : onClose(res);
+            }
             else if (type === "file") {
                 if (type_check) { is_enter ? onEnter(path) : onClose(path); }
                 else { pushMsg("The path you entered is a directory. Please select a file", "error"); }

@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from datetime import datetime, timezone
 from bitarray import bitarray
 
+from collections.abc import Callable
 from src.database import Database as db
 from src.models import FileETAInfo, TaskInfo, TaskSchedule, ApiWaiting
 from src.eta import ETA
@@ -18,16 +19,22 @@ class PlanUtils:
     _sta = TaskSchedule(finish_time=datetime.now(timezone.utc))
 
     @classmethod
-    async def get_next(cls) -> ApiWaiting | None | bool:
+    async def get_next(cls, onPause: Callable) -> ApiWaiting | None:
         if cls._sta.on:
 
             if ETA.model is None:
-                await ETA.train_model()
+                try:
+                    await ETA.train_model()
+                except Exception as e:
+                    Lg.error(f"Error occurred while training ETA model: {e}")
+                    cls._sta.on = False
+                    return await cls._fetch_first()
 
             tasks: list[PlanTask] = []
             rows = db.fetchall("SELECT * FROM waiting;")
             if not rows:
                 raise Exception("No task in waiting queue.")
+            
             for row in rows:
                 task = db.fetch_ApiWaiting(row)
                 if all(f.path.is_file() for f in task.input):
@@ -46,11 +53,15 @@ class PlanUtils:
                 raise Exception("No task in waiting queue.")
 
             duration = int(
-                (datetime.now(timezone.utc) - cls._sta.finish_time).total_seconds()
+                (cls._sta.finish_time - datetime.now(timezone.utc)).total_seconds()
             )
             if duration < 0:
-                raise Exception("Invalid plan status.")
+                Lg.info("Scheduled finish time has passed, pausing processing.")
+                cls._sta.on = False
+                onPause()
+                raise Exception("Deadline for scheduling has passed.")
             if duration > 8e4:
+                Lg.debug("Duration is too long, fetching the first task in waiting queue.")
                 return await cls._fetch_first()
 
             dp = [0] * (duration + 1)
@@ -83,6 +94,7 @@ class PlanUtils:
                     return rtn
                 else:
                     cls._sta.on = False
+                    onPause()
                     raise Exception("No task can be scheduled within the time.")
             else:
                 if cls._sta.sort == "longest":
@@ -140,5 +152,7 @@ async def get_status() -> TaskSchedule:
 
 @plan_router.post("/status")
 async def update_status(data: TaskSchedule) -> None:
+    if (data.finish_time < datetime.now(timezone.utc)) and data.on:
+        raise ValueError("Finish time cannot be in the past when scheduling is on.")
     PlanUtils._sta = data
     Lg.info(f"Plan status updated: {data.model_dump_json()}")
