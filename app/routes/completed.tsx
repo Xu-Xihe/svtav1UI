@@ -90,8 +90,8 @@ export default function Completed() {
                 <Table stickyHeader>
                     <TableHead>
                         <TableRow>
-                            <TableCell>Input</TableCell>
-                            <TableCell sx={{ width: "100%" }}>Output</TableCell>
+                            <TableCell sx={{ maxWidth: "38%", overflowWrap: "anywhere" }}>Input</TableCell>
+                            <TableCell sx={{ maxWidth: "62%", overflowWrap: "anywhere" }}>Output</TableCell>
                             <TableCell sx={{ whiteSpace: "nowrap" }} align='center'>Total Consumed Time</TableCell>
                             <TableCell sx={{ whiteSpace: "nowrap" }} align='center'>Finished Time</TableCell>
                             <TableCell sx={{ whiteSpace: "nowrap" }} align='center'>

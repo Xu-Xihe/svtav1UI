@@ -27,7 +27,7 @@ async def list_directory(
 ):
     path = Path(path_str)
     if not path.exists():
-        raise HTTPException(400, "Invalid path")
+        raise HTTPException(400, "Invalid path or path not found")
     if not path.is_dir():
         return ApiPath(dir=[], file=[])
     dir: list[str] = []

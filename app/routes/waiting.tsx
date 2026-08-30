@@ -133,8 +133,8 @@ export default function Waiting() {
                 onClick={() => setTaskExtend(taskExtend === task.uid ? -1 : task.uid || -1)}
             >
                 <TableCell>{task.uid}</TableCell>
-                <TableCell sx={{ whiteSpace: "nowrap" }}>{task.input.map((file) => file.path.split("/").pop()).join(", ")}</TableCell>
-                <TableCell sx={{ width: "100%", overflowWrap: "anywhere" }}>{task.output}</TableCell>
+                <TableCell sx={{ maxWidth: "38%", overflowWrap: "anywhere" }}>{task.input.map((file) => file.path.split("/").pop()).join(", ")}</TableCell>
+                <TableCell sx={{ maxWidth: "62%", overflowWrap: "anywhere" }}>{task.output}</TableCell>
                 <TableCell align='center'>
                     <EtaText eta={task.eta_v} />
                 </TableCell>

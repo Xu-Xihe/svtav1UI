@@ -101,8 +101,8 @@ export default function LLMCompleted() {
                     <TableBody>
                         {tasks.map((task, index) => (
                             <TableRow key={index} hover>
-                                <TableCell sx={{ width: "50%", overflowWrap: "anywhere" }}>{task.input}</TableCell>
-                                <TableCell sx={{ width: "50%", overflowWrap: "anywhere" }}>{task.output}</TableCell>
+                                <TableCell sx={{ maxWidth: "50%", overflowWrap: "anywhere" }}>{task.input}</TableCell>
+                                <TableCell sx={{ maxWidth: "50%", overflowWrap: "anywhere" }}>{task.output}</TableCell>
                                 <TableCell sx={{ whiteSpace: "nowrap" }} align='center'>{Language[task.org_lang]}</TableCell>
                                 <TableCell sx={{ whiteSpace: "nowrap" }} align='center'>{Language[task.tran_lang]}</TableCell>
                                 <TableCell sx={{ whiteSpace: "nowrap" }} align='left'>{new Date(task.finished_time).toLocaleString()}</TableCell>

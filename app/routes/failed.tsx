@@ -173,11 +173,13 @@ export default function Failed() {
                     <TableBody>
                         {failedInfo.map((task, index) => (
                             <TableRow key={index}>
-                                {typeof task.input === "object"
-                                    ? <TableCell>{task.input.map(file => file.path.split("/").slice(-1)[0]).join(", ")}</TableCell>
-                                    : <TableCell>{task.input}</TableCell>
-                                }
-                                <TableCell sx={{ width: "100%", overflowWrap: "anywhere" }}>{task.output}</TableCell>
+                                <TableCell sx={{ maxWidth: "38%", overflowWrap: "anywhere" }}>
+                                    {typeof task.input === "object"
+                                        ? task.input.map(file => file.path.split("/").slice(-1)[0]).join(", ")
+                                        : task.input
+                                    }
+                                </TableCell>
+                                <TableCell sx={{ maxWidth: "62%", overflowWrap: "anywhere" }}>{task.output}</TableCell>
                                 <TableCell sx={{ whiteSpace: "nowrap" }}>{new Date(task.time).toLocaleString()}</TableCell>
                                 <TableCell sx={{ gap: 1, whiteSpace: "nowrap" }}>
                                     <IconButton onClick={() => { setErrorDialog(index) }}>

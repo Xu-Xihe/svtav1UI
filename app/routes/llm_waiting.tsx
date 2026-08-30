@@ -89,8 +89,8 @@ export default function LLMWaiting() {
                         {tasks.map((task) => (
                             <TableRow key={task.output}>
                                 <TableCell sx={{ whiteSpace: "nowrap" }}>{task.uid}</TableCell>
-                                <TableCell>{task.input}</TableCell>
-                                <TableCell sx={{ width: "100%", overflowWrap: "anywhere" }}>{task.output}</TableCell>
+                                <TableCell sx={{ maxWidth: "38%", overflowWrap: "anywhere" }}>{task.input}</TableCell>
+                                <TableCell sx={{ maxWidth: "62%", overflowWrap: "anywhere" }}>{task.output}</TableCell>
                                 <TableCell sx={{ whiteSpace: "nowrap" }} align='center'>{Language[task.org_lang]}</TableCell>
                                 <TableCell sx={{ whiteSpace: "nowrap" }} align='center'>{Language[task.tran_lang]}</TableCell>
                                 <TableCell sx={{ whiteSpace: "nowrap" }} align='center'>
